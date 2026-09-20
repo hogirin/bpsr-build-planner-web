@@ -1,0 +1,118 @@
+import { useTranslation } from 'react-i18next';
+import { PROFESSIONS } from '../profession';
+import type { BuildPlanData } from '../plan/buildPlan';
+import { getClassIconUrl } from './classIcons';
+import renameIconUrl from '../../assets/ui/camera_icon_function_29.png';
+import deleteIconUrl from '../../assets/ui/com_btn_delete.png';
+
+interface PlanListDropdownProps {
+  buildPlans: BuildPlanData[];
+  deleteConfirmId: string | null;
+  onSetDeleteConfirmId: (id: string | null) => void;
+  onLoadPlan: (id: string) => void;
+  onOpenRenameDialog: (plan: BuildPlanData) => void;
+  onDeletePlan: (id: string) => void;
+  /** dropdown-panel-anim(+開閉に応じ--closing)を渡し、位置決めラッパー側で開閉アニメーションする。 */
+  animClassName?: string;
+}
+
+function PlanListDropdown({
+  buildPlans,
+  deleteConfirmId,
+  onSetDeleteConfirmId,
+  onLoadPlan,
+  onOpenRenameDialog,
+  onDeletePlan,
+  animClassName,
+}: PlanListDropdownProps) {
+  const { t } = useTranslation();
+  return (
+    <div className={`character-panel__plan-list-anchor${animClassName ? ` ${animClassName}` : ''}`}>
+      <div className="dropdown-panel-anim__inner">
+        <div className="character-panel__plan-list">
+          {buildPlans.length === 0 ? (
+            <div className="character-panel__plan-empty">
+              {t('buildPlanner.noPlans', { defaultValue: 'No saved plans' })}
+            </div>
+          ) : (
+            buildPlans.map((plan) => {
+              const planProfId = PROFESSIONS[plan.professionKey]?.professionId;
+              const planIconUrl = planProfId != null ? getClassIconUrl(planProfId) : undefined;
+              return (
+                <div key={plan.id} className="character-panel__plan-item">
+                  {deleteConfirmId === plan.id ? (
+                    <div className="character-panel__plan-confirm">
+                      <span className="character-panel__plan-confirm-label">
+                        {t('buildPlanner.confirmDelete', { defaultValue: '削除しますか？' })}
+                      </span>
+                      <button
+                        type="button"
+                        className="character-panel__plan-confirm-ok"
+                        onClick={() => {
+                          onDeletePlan(plan.id);
+                          onSetDeleteConfirmId(null);
+                        }}
+                      >
+                        {t('buildPlanner.confirmOk', { defaultValue: 'OK' })}
+                      </button>
+                      <button
+                        type="button"
+                        className="character-panel__plan-confirm-cancel"
+                        onClick={() => onSetDeleteConfirmId(null)}
+                      >
+                        {t('buildPlanner.confirmCancel', { defaultValue: 'キャンセル' })}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {planIconUrl && (
+                        <img
+                          src={planIconUrl}
+                          className="character-panel__plan-class-icon"
+                          alt=""
+                        />
+                      )}
+                      <button
+                        type="button"
+                        className="character-panel__plan-load"
+                        onClick={() => onLoadPlan(plan.id)}
+                      >
+                        {plan.name || t('buildPlanner.buildPlanPlaceholder')}
+                      </button>
+                      <button
+                        type="button"
+                        className="character-panel__plan-rename"
+                        title={t('buildPlanner.renamePlan', { defaultValue: 'リネーム' })}
+                        onClick={() => onOpenRenameDialog(plan)}
+                      >
+                        <img
+                          src={renameIconUrl}
+                          className="character-panel__plan-action-icon"
+                          alt=""
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        className="character-panel__plan-delete"
+                        title={t('buildPlanner.deletePlan', { defaultValue: 'Delete' })}
+                        onClick={() => onSetDeleteConfirmId(plan.id)}
+                      >
+                        <img
+                          src={deleteIconUrl}
+                          className="character-panel__plan-action-icon"
+                          alt=""
+                        />
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default PlanListDropdown;

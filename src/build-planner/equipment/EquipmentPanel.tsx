@@ -1,0 +1,286 @@
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useShallow } from 'zustand/react/shallow';
+import './equipment.css';
+import {
+  EQUIPMENT_BOTTOM_SLOTS,
+  EQUIPMENT_TOP_SLOTS,
+  getGearType,
+  getItemsBySlot,
+} from './equipmentData';
+import type { Profession, ProfessionTypeKey } from '../profession';
+import { useAnchorTooltip } from '../components/useAnchorTooltip';
+import { useBuildStore } from '../store/useBuildStore';
+import EquipmentSlotPicker from './EquipmentSlotPicker';
+import EquipmentSlotButton from './EquipmentSlotButton';
+import EquipmentItemPopup from './EquipmentItemPopup';
+import type { CandidateGsFilter } from './equipmentSlotPickerData';
+import {
+  getDefaultCandidateGsFilter,
+  isSeaBreezeSeries,
+  qualityToAssetIndex,
+} from './equipmentSlotPickerData';
+import { createAssetMap } from '../assetMap';
+import type { EquipmentItem, EquipmentSlotId } from '../types';
+
+// ---- アイコン ----
+
+const equipIcon = createAssetMap(
+  import.meta.glob<{ default: string }>(
+    [
+      '../../assets/equipments/weap_equip_*.png',
+      '../../assets/equipments/ch_wp_*.png',
+      '../../assets/equipments/c_equip_icon_*.png',
+      '../../assets/equipments/headwear_icon_*.png',
+      '../../assets/equipments/clothes_icon_*.png',
+      '../../assets/equipments/gloves_icon_*.png',
+      '../../assets/equipments/shoes_icon_*.png',
+      '../../assets/equipments/ears_icon_*.png',
+      '../../assets/equipments/neck_icon_*.png',
+      '../../assets/equipments/ring_icon_*.png',
+    ],
+    { eager: true },
+  ),
+);
+
+function getEquipUrl(name: string): string | undefined {
+  return equipIcon(name) ?? equipIcon(name.replace(/_m_/, '_f_'));
+}
+
+// 未装備時スロットアイコン
+const SLOT_EMPTY_ICON: Partial<Record<EquipmentSlotId, string>> = {
+  weapon: 'weap_equip_weapon',
+  head: 'weap_equip_head_off',
+  chest: 'weap_equip_clothes_off',
+  arms: 'weap_equip_hand_off',
+  legs: 'weap_equip_shoes_off',
+  earring: 'weap_equip_earring_off',
+  necklace: 'weap_equip_necklace_off',
+  ring: 'weap_equip_ring_off',
+  ringLeft: 'weap_equip_bracelet_off_01',
+  ringRight: 'weap_equip_bracelet_off_02',
+  belt: 'weap_equip_amulet_off',
+};
+
+const uiIcon = createAssetMap(
+  import.meta.glob<{ default: string }>(
+    ['../../assets/ui/weap_equip_*.png', '../../assets/ui/item_quality_equip_*.png'],
+    { eager: true },
+  ),
+);
+
+// アイテムのqualityと種類から背景画像名を決定
+// 00=Lv10相当(q1), 01=Lv20相当(q2), 03=紫(q3), 04=黄土(q4), 05=赤(q5), 07=蒼海武器
+function getEquipBgUrl(slot: EquipmentSlotId, item?: EquipmentItem): string | undefined {
+  let name;
+  if (BOTTOM_SLOT_SET.has(slot)) {
+    name = `item_quality_equip_${item ? qualityToAssetIndex(item.quality) : 0}`;
+  } else if (!item) {
+    name = 'weap_equip_00';
+  } else if (isSeaBreezeSeries(item)) {
+    name = 'weap_equip_07';
+  } else {
+    name = `weap_equip_${String(qualityToAssetIndex(item.quality)).padStart(2, '0')}`;
+  }
+  return uiIcon(name);
+}
+
+const BOTTOM_SLOT_SET = new Set<EquipmentSlotId>(EQUIPMENT_BOTTOM_SLOTS);
+
+// 装備選択ダイアログのヘッダーにある部位切り替えボタン用の全部位一覧(表示順)。
+const ALL_EQUIPMENT_SLOTS: EquipmentSlotId[] = [
+  'weapon',
+  ...EQUIPMENT_TOP_SLOTS,
+  ...EQUIPMENT_BOTTOM_SLOTS,
+];
+
+// パネル右側寄りの部位はポップアップが画面外/クリック操作の邪魔になるため左側に表示する。
+const LEFT_ALIGNED_POPUP_SLOTS = new Set<EquipmentSlotId>([
+  'arms',
+  'legs',
+  'necklace',
+  'ring',
+  'ringRight',
+  'belt',
+]);
+
+// 装備中アイコン: 武器は _t、防具・アクセサリは _l サフィックス付きを優先。未装備はスロット別プレースホルダー。
+function getSlotIconUrl(
+  slot: EquipmentSlotId,
+  item: EquipmentItem | undefined,
+): string | undefined {
+  if (item) {
+    const suffix = slot === 'weapon' ? '_t' : '_l';
+    return getEquipUrl(item.icon + suffix) ?? getEquipUrl(item.icon);
+  }
+  const emptyName = SLOT_EMPTY_ICON[slot];
+  return emptyName ? getEquipUrl(emptyName) : undefined;
+}
+
+// ---- Component ----
+
+interface EquipmentPanelProps {
+  profession: Profession;
+  professionTypeKey: ProfessionTypeKey;
+}
+
+function EquipmentPanel({ profession, professionTypeKey }: EquipmentPanelProps) {
+  const { t } = useTranslation();
+  const {
+    equipped,
+    refineLevels,
+    perfectlines,
+    evolutionStats,
+    legendaryAffixState,
+    legendaryAffixGroupState,
+    slotEnchants,
+  } = useBuildStore(
+    useShallow((s) => ({
+      equipped: s.equipped,
+      refineLevels: s.refineLevels,
+      perfectlines: s.perfectlines,
+      evolutionStats: s.evolutionStats,
+      legendaryAffixState: s.legendaryAffixState,
+      legendaryAffixGroupState: s.legendaryAffixGroupState,
+      slotEnchants: s.slotEnchants,
+    })),
+  );
+  const onEquip = useBuildStore((s) => s.equip);
+  const onUnequip = useBuildStore((s) => s.unequip);
+  const onRefineLevel = useBuildStore((s) => s.setRefineLevel);
+  const onPerfectline = useBuildStore((s) => s.setPerfectline);
+  const onSetEvolutionStat = useBuildStore((s) => s.setEvolutionStat);
+  const onSetLegendaryAffix = useBuildStore((s) => s.setLegendaryAffix);
+  const onSetLegendaryAffixGroup = useBuildStore((s) => s.setLegendaryAffixGroup);
+  const onSetEnchant = useBuildStore((s) => s.setSlotEnchant);
+  const [openSlot, setOpenSlot] = useState<EquipmentSlotId | null>(null);
+  // 装備選択候補のGS帯フィルター。ダイアログを開き直しても選択が消えないよう、
+  // ダイアログ本体(EquipmentSlotPicker)ではなくこのパネル側で保持する
+  // (localStorageへは保存せず、セッション中のみ有効)。null = 未選択(絞り込みなし)。
+  // 初期値はクライアントの現在日時から決める(getDefaultCandidateGsFilter)。
+  const [candidateGsFilter, setCandidateGsFilter] = useState<CandidateGsFilter | null>(() =>
+    getDefaultCandidateGsFilter(),
+  );
+  // スキルパネル等と揃え、0.5秒とどまってから表示するhover intent。カーソルが動き続けている
+  // 間はopenが呼ばれるたびリセットされる(EquipmentSlotButtonのonHoverMoveはmousemoveの
+  // たびに呼ばれるため、入室直後の1回目も含めてenter/move兼用で機能する)。
+  const {
+    tooltip: hoveredSlot,
+    open: openHoveredSlot,
+    close: closeHoveredSlot,
+  } = useAnchorTooltip<{ slot: EquipmentSlotId; x: number; y: number }>(
+    500,
+    (a, b) => a.slot === b.slot,
+  );
+
+  const renderSlot = (slot: EquipmentSlotId) => {
+    const item = equipped[slot];
+    return (
+      <EquipmentSlotButton
+        key={slot}
+        slot={slot}
+        item={item}
+        refineLevel={refineLevels[slot]}
+        iconUrl={getSlotIconUrl(slot, item)}
+        bgUrl={getEquipBgUrl(slot, item)}
+        isBottom={BOTTOM_SLOT_SET.has(slot)}
+        onOpen={() => setOpenSlot(slot)}
+        onUnequip={() => onUnequip(slot)}
+        onHoverMove={item ? (x, y) => openHoveredSlot({ slot, x, y }) : undefined}
+        onHoverEnd={item ? closeHoveredSlot : undefined}
+      />
+    );
+  };
+
+  const hoveredItem = hoveredSlot ? equipped[hoveredSlot.slot] : undefined;
+
+  // 装備選択ダイアログのヘッダーに表示する部位切り替えボタン。ダイアログを閉じずに
+  // openSlotだけを変更する(アイコンは常に未装備時のプレースホルダーを使い、部位の
+  // 種類がひと目でわかるようにする。装備中アイテムのアイコンは使わない)。
+  const slotSwitcher = openSlot ? (
+    <div className="equipment-dialog__slot-switch">
+      {ALL_EQUIPMENT_SLOTS.map((slot) => {
+        const iconUrl = getSlotIconUrl(slot, undefined);
+        return (
+          <button
+            key={slot}
+            type="button"
+            className={`equipment-dialog__slot-switch-btn${slot === openSlot ? ' equipment-dialog__slot-switch-btn--active' : ''}`}
+            title={t(`buildPlanner.slots.${slot}`)}
+            aria-label={t(`buildPlanner.slots.${slot}`)}
+            onClick={() => setOpenSlot(slot)}
+          >
+            {iconUrl && <img src={iconUrl} alt="" />}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
+  return (
+    <section className="equipment-panel">
+      <div className="equipment-panel__weapon">{renderSlot('weapon')}</div>
+      <div className="equipment-panel__grids">
+        <div className="equipment-panel__grid equipment-panel__grid--top">
+          {EQUIPMENT_TOP_SLOTS.map(renderSlot)}
+        </div>
+        <div className="equipment-panel__grid equipment-panel__grid--bottom">
+          {EQUIPMENT_BOTTOM_SLOTS.map(renderSlot)}
+        </div>
+      </div>
+      {openSlot && (
+        <EquipmentSlotPicker
+          slot={openSlot}
+          slotLabel={t(`buildPlanner.slots.${openSlot}`)}
+          candidates={getItemsBySlot(openSlot).filter((item) => {
+            if (openSlot === 'weapon') return item.weaponProfessionId === profession.professionId;
+            const gearType = getGearType(item);
+            return gearType === null || gearType === profession.mainStat;
+          })}
+          equippedId={equipped[openSlot]?.id}
+          equippedItems={equipped}
+          refineLevel={refineLevels[openSlot]}
+          perfectline={perfectlines[openSlot]}
+          profession={profession}
+          professionTypeKey={professionTypeKey}
+          evolutionStats={evolutionStats[openSlot] ?? []}
+          selectedLegendaryAffix={legendaryAffixState[openSlot]}
+          selectedLegendaryAffixGroup={legendaryAffixGroupState[openSlot]}
+          selectedEnchant={slotEnchants[openSlot] ?? undefined}
+          candidateGsFilter={candidateGsFilter}
+          onSetCandidateGsFilter={setCandidateGsFilter}
+          onSelect={(selected) => onEquip(openSlot, selected)}
+          onUnequip={() => onUnequip(openSlot)}
+          onRefineLevel={(level) => onRefineLevel(openSlot, level)}
+          onPerfectline={(value) => onPerfectline(openSlot, value)}
+          onSetEvolutionStat={(idx, statId) => onSetEvolutionStat(openSlot, idx, statId)}
+          onSetLegendaryAffix={(sel) => onSetLegendaryAffix(openSlot, sel)}
+          onSetLegendaryAffixGroup={(idx, sel) => onSetLegendaryAffixGroup(openSlot, idx, sel)}
+          onSetEnchant={(itemId) => onSetEnchant(openSlot, itemId)}
+          onClose={() => setOpenSlot(null)}
+          headerExtra={slotSwitcher}
+        />
+      )}
+      {!openSlot && hoveredSlot && hoveredItem && (
+        <EquipmentItemPopup
+          mouseX={hoveredSlot.x}
+          mouseY={hoveredSlot.y}
+          align={LEFT_ALIGNED_POPUP_SLOTS.has(hoveredSlot.slot) ? 'left' : 'right'}
+          slot={hoveredSlot.slot}
+          item={hoveredItem}
+          equippedItems={equipped}
+          refineLevel={refineLevels[hoveredSlot.slot]}
+          perfectline={perfectlines[hoveredSlot.slot]}
+          profession={profession}
+          professionTypeKey={professionTypeKey}
+          evolutionStats={evolutionStats[hoveredSlot.slot] ?? []}
+          selectedLegendaryAffix={legendaryAffixState[hoveredSlot.slot]}
+          selectedLegendaryAffixGroup={legendaryAffixGroupState[hoveredSlot.slot]}
+          selectedEnchant={slotEnchants[hoveredSlot.slot] ?? undefined}
+        />
+      )}
+    </section>
+  );
+}
+
+export default EquipmentPanel;

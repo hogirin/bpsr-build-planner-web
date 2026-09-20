@@ -1,0 +1,757 @@
+/* ---- Phantom Panel ---- */
+
+.phantom-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: #1c1c24;
+  border: 1px solid #2a2a33;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.phantom-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 13px;
+  border-bottom: 1px solid #2a2a33;
+  flex-shrink: 0;
+}
+
+.phantom-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phantom-header-label {
+  font-size: 13px;
+  color: #9090a8;
+  white-space: nowrap;
+  min-width: 5em;
+}
+
+.phantom-effect-summary-btn {
+  margin-left: auto;
+  background: #23232d;
+  border: 1px solid #3a3a4a;
+  color: #aaa;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.phantom-effect-summary-btn:hover {
+  border-color: #f4a13a;
+  color: #f4a13a;
+}
+
+.phantom-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  font-size: 14px;
+}
+
+.phantom-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+
+.phantom-tree-wrapper {
+  flex: 0 0 50%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid #2a2a33;
+  position: relative;
+}
+
+.phantom-tree-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 4px 0 4px;
+  cursor: grab;
+}
+
+/* ヘッダー（スクロール外に固定）: 無効時の注意書き(左詰め) + ズームコントロール(右詰め) */
+.phantom-tree-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  background: rgba(30, 10, 20, 0.65);
+  border-bottom: 1px solid #2a2a33;
+  position: absolute;
+  width: calc(100% - 22px);
+  z-index: 1;
+}
+
+.phantom-tree-header__notice {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: #e0a15e;
+}
+
+.phantom-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  /* 注意書き(.phantom-tree-header__notice)の有無に関わらず右詰めにする。
+     justify-content: space-between だと注意書きが消えた際に子要素が1つになり、
+     左詰めになってしまうため使わない。 */
+  margin-left: auto;
+}
+
+.phantom-zoom-btn {
+  background: #23232d;
+  border: 1px solid #3a3a4a;
+  color: #aaa;
+  border-radius: 3px;
+  width: 20px;
+  height: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.phantom-zoom-btn:hover:not(:disabled) {
+  border-color: #f4a13a;
+  color: #f4a13a;
+}
+
+.phantom-zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.phantom-zoom-pct {
+  background: transparent;
+  border: 1px solid #2a2a33;
+  border-radius: 3px;
+  color: #666;
+  font-size: 10px;
+  min-width: 34px;
+  height: 20px;
+  cursor: pointer;
+  padding: 0 2px;
+  text-align: center;
+  line-height: 20px;
+}
+
+.phantom-zoom-pct:hover {
+  color: #aaa;
+  border-color: #444;
+}
+
+.phantom-tree-svg {
+  display: block;
+  margin: 300px auto;
+}
+
+.phantom-right {
+  width: 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* 背景画像は.phantom-body(左右共通)側で敷いているため、右側だけ半透明グレーを
+     重ねて薄く見せる(左のツリー側は画像をそのまま見せる)。 */
+  background: rgba(28, 28, 36, 0.7);
+}
+
+/* ---- 絆ポイントセクション ---- */
+.phantom-bond-section {
+  flex-shrink: 0;
+  border-bottom: 1px solid #2a2a33;
+  padding: 6px 10px;
+}
+
+.phantom-bond-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phantom-bond-label {
+  font-size: 12px;
+  color: #9090a8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.phantom-bond-effects {
+  margin-top: 4px;
+}
+
+.phantom-bond-effects-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #909090;
+  font-size: 11px;
+  padding: 2px 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.phantom-bond-effects-toggle:hover {
+  color: #9090a8;
+}
+
+.phantom-bond-effects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 0 2px;
+}
+
+.phantom-bond-effect {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  opacity: 0.45;
+  font-size: 11px;
+}
+
+.phantom-bond-effect--active {
+  opacity: 1;
+}
+
+.phantom-bond-effect-threshold {
+  color: #6a6a8a;
+  min-width: 30px;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.phantom-bond-effect--active .phantom-bond-effect-threshold {
+  color: #9090c0;
+}
+
+.phantom-bond-effect-desc {
+  color: #a0c8e0;
+  line-height: 1.4;
+  font-size: 11px;
+}
+
+/* 絆スロット1〜5の開放Lv一覧(絆レベル効果の折り畳み末尾に表示) */
+.phantom-bond-slots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 0;
+  padding: 4px 0 2px;
+  border-top: 1px dashed #2a2a38;
+  list-style: none;
+}
+
+.phantom-bond-slot {
+  color: #6a6a8a;
+  opacity: 0.45;
+  font-size: 11px;
+}
+
+.phantom-bond-slot--active {
+  color: #9090c0;
+  opacity: 1;
+}
+
+/* ---- ノード効果エリア ---- */
+.phantom-desc-area {
+  border-bottom: 1px solid #2a2a33;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.phantom-desc-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: #1e1e28;
+  border: none;
+  border-bottom: 1px solid #2a2a33;
+  color: #9090a8;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.phantom-desc-toggle:hover {
+  color: #c0c0d0;
+  background: #22222e;
+}
+
+.phantom-desc-content {
+  padding: 10px 12px;
+  color: #9090a8;
+  min-height: 150px;
+}
+
+.phantom-desc-placeholder {
+  color: #444;
+  font-size: 16px;
+}
+
+.phantom-desc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.phantom-desc-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.phantom-desc-name {
+  color: #e8e6e1;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.phantom-desc-effects {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.phantom-desc-effect {
+  color: #a0c8e0;
+  font-size: 17px;
+}
+
+.phantom-desc-effect--buff {
+  color: #9898bb;
+  line-height: 1.4;
+}
+
+.phantom-desc-factor {
+  color: #4a9af4;
+  font-size: 17px;
+  margin-top: 3px;
+}
+
+.phantom-desc-text {
+  color: #7a7a9a;
+  font-size: 17px;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+/* 未開放ノードの説明末尾に付く「（Lv.Nで開放）」 */
+.phantom-desc-locked-note {
+  color: #8a8a9a;
+  font-size: 13px;
+  font-weight: 400;
+  margin-top: 5px;
+}
+
+/* ---- ノード設定 ---- */
+.phantom-node-config {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 300px;
+}
+
+.phantom-config-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 4px;
+  margin: 0 -4px;
+  border-bottom: 1px solid #1e1e28;
+  border-radius: 4px;
+  min-height: 50px;
+}
+
+/* 行全体(行番号込み)がクリック領域・ツリー側選択との連動先になる行。 */
+.phantom-config-row--clickable {
+  cursor: pointer;
+}
+
+.phantom-config-row--clickable:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.phantom-config-row--highlight {
+  outline: 2px solid #ffe066;
+  outline-offset: -2px;
+  background: rgba(255, 224, 102, 0.08);
+}
+
+.phantom-config-row--fixed .phantom-node-name {
+  color: #c8b870;
+  font-size: 18px;
+  padding-top: 2px;
+}
+
+.phantom-config-row--inactive .phantom-inactive-label {
+  color: #555;
+  font-size: 17px;
+  padding-top: 4px;
+}
+
+.phantom-step-num {
+  flex-shrink: 0;
+  width: 26px;
+  font-size: 15px;
+  color: #909090;
+  text-align: right;
+  padding-top: 4px;
+}
+
+.phantom-config-node-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* fixed-ordinary行のアイコン+ラベル(クリック・強調は行全体側が担うためレイアウトのみ)。
+   flex:1 で余白を占有し、ルート行では因子ランク一括変更コントロールを右端へ押し出す。 */
+.phantom-config-node-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ルートノード行右端の「因子ランク一括変更」。特別な操作だと分かるよう軽く強調する。 */
+.phantom-bulk-grade {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid #3a8a94;
+  border-radius: 6px;
+  background: rgba(74, 200, 223, 0.08);
+}
+
+.phantom-bulk-grade__label {
+  font-size: 13px;
+  color: #6ad0e0;
+  white-space: nowrap;
+}
+
+/* 潜在Lvがノードの開放Lvに未達な行/ボタン。選択・因子装着は妨げないため見た目のみ暗くする。
+   filter は position:fixed 子孫(因子ドロップダウンのFloatingTooltip等)の containing block を
+   このコンテナに変えてしまい、ビューポート基準の座標計算(CustomDropdown.tsx)が壊れるため
+   使わない(opacity のみで暗くする)。 */
+.phantom-config-locked {
+  opacity: 0.4;
+}
+
+.phantom-choice-btn--highlight {
+  outline: 2px solid #ffe066;
+  outline-offset: 1px;
+}
+
+.phantom-choice-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 2px;
+}
+
+.phantom-choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #23232d;
+  border: 1px solid #3a3a4a;
+  color: #9090a8;
+  border-radius: 50px;
+  border-style: dashed;
+  padding: 4px 10px;
+  font-size: 17px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.phantom-choice-btn:hover {
+  border-color: #666;
+  color: #ccc;
+}
+
+.phantom-choice-btn--active {
+  border-color: #f4a13a;
+  color: #f4a13a;
+  background: #2e2315;
+}
+
+.phantom-choice-btn-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+/* ---- Factor slot ---- */
+.phantom-config-row--factor {
+  align-items: flex-start;
+}
+
+.phantom-factor-with-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.phantom-factor-slot-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.phantom-factor-label {
+  font-size: 17px;
+  color: #7ab4f4;
+}
+
+.phantom-factor-type-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.phantom-factor-slot {
+  flex: 1;
+}
+
+.phantom-factor-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---- Custom Dropdown ---- */
+.phantom-dropdown {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.phantom-template-dropdown {
+  min-width: 375px;
+  max-width: 450px;
+}
+
+/* max-widthを設けず flex:1 のみで幅を決める。ランク変更のStepper側は flex-shrink:0
+   (行のもう片方の要素)のため、ドロップダウンは「行の残り幅」を超えて広がらず、
+   Stepperが画面外にはみ出すことはない。実像因子等の長い名前でも文字欠けしにくいよう、
+   文字サイズも他のドロップダウン(テンプレート選択)より少し小さくする。 */
+.phantom-factor-dropdown {
+  flex: 1;
+  min-width: 0;
+}
+
+.phantom-factor-dropdown .phantom-dropdown__trigger,
+.phantom-factor-dropdown .phantom-dropdown__label,
+.phantom-dropdown__list.phantom-factor-dropdown .phantom-dropdown__item {
+  font-size: 15px;
+}
+
+.phantom-dropdown__trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #23232d;
+  border: 1px solid #3a3a4a;
+  color: #e8e6e1;
+  border-radius: 3px;
+  height: 38px;
+  padding: 0 8px;
+  font-size: 17px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.phantom-dropdown__trigger:hover {
+  border-color: #666;
+}
+
+.phantom-dropdown__placeholder {
+  color: #555;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.phantom-dropdown__label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 17px;
+}
+
+.phantom-dropdown__arrow {
+  color: #666;
+  margin-left: auto;
+}
+
+.phantom-dropdown__icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.phantom-dropdown__list {
+  max-height: 300px;
+  overflow-y: auto;
+  background: #1e1e2a;
+  border: 1px solid #4a4a5a;
+  border-radius: 3px;
+  z-index: 200;
+  margin-top: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.phantom-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  background: transparent;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  font-size: 17px;
+  color: #9090a8;
+  white-space: nowrap;
+}
+
+.phantom-dropdown__item:hover {
+  background: #2a2a38;
+  color: #ccc;
+}
+
+.phantom-dropdown__item--active {
+  background: #2e2315;
+  color: #f4a13a;
+}
+
+.phantom-dropdown__item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 未開放テンプレートの「（Lv.Nで開放）」等、ラベル末尾の補足テキスト */
+.phantom-dropdown__sublabel {
+  font-size: 13px;
+  font-weight: 400;
+  color: #8a8a9a;
+  margin-left: 2px;
+}
+
+.phantom-dropdown__tooltip {
+  z-index: 500;
+  background: #1a1a2a;
+  border: 1px solid #4a4a6a;
+  border-radius: 4px;
+  padding: 8px 12px;
+  max-width: 280px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.phantom-dropdown__tooltip-name {
+  font-size: 16px;
+  color: #e8e6e1;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.phantom-dropdown__tooltip-desc {
+  font-size: 15px;
+  color: #8888aa;
+  line-height: 1.5;
+}
+
+/* ---- Grade Stepper ---- */
+.phantom-grade-stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.phantom-grade-stepper__value {
+  font-size: 17px;
+  color: #4a9af4;
+  min-width: 38px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.phantom-grade-stepper__btns {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.phantom-grade-stepper__btn {
+  background: #252530;
+  border: 1px solid #38384a;
+  border-radius: 2px;
+  color: #a0a0b0;
+  font-size: 10px;
+  width: 22px;
+  height: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+
+.phantom-grade-stepper__btn:hover:not(:disabled) {
+  background: #383848;
+  color: #e8e6e1;
+}
+
+.phantom-grade-stepper__btn:disabled {
+  color: #383848;
+  cursor: default;
+}

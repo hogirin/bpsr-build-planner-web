@@ -1,0 +1,237 @@
+import { useTranslation } from 'react-i18next';
+import FloatingTooltip from '../components/FloatingTooltip';
+import LinkTextPopup from '../components/LinkTextPopup';
+import { renderMarkup } from '../components/renderMarkup';
+import { useLinkTextPopup } from '../components/useLinkTextPopup';
+import { IMAGINE_FLAT_STAT, RAW_PERCENT_STAT_IDS } from '../stats/attrMaps';
+import {
+  type BattleImagineData,
+  getBattleImagineData,
+  getImagineIconUrl,
+  getSkillData,
+  getSkillIconUrl,
+  type SkillData,
+} from './skillData';
+
+export interface SkillTooltipState {
+  skillId: number;
+  isImagine?: boolean;
+  rank?: number;
+  /** クラススキルのスキルレベル(1-30)。省略時は30。イマジンでは未使用。 */
+  level?: number;
+  /** そのスキル/イマジンによる能力スコア寄与。ロールスキル等、算出不可の場合は undefined。 */
+  score?: number;
+  /** 'right'(既定): アイコンの右側に表示。'left': パネル右側寄りのアイコン用に左側へ表示。 */
+  align?: 'right' | 'left';
+  x: number;
+  y: number;
+  pinned: boolean;
+}
+
+/**
+ * クラススキル性能値の構成部品:
+ * 文字列(固定) / r=ランクG0-G6別 / l=レベル1-30別 /
+ * u付き=両次元変動(値 = l[level-1] + r[rank] を書式 u で表示。up=%表記, un=実数)
+ */
+type SkillEffectPart =
+  string | { r: string[] } | { l: string[] } | { u: 'up' | 'un'; l: number[]; r: number[] };
+
+// extract-ztable.mjs の formatUpPercent と同一の書式(raw/100 の%表記、小数最大2桁)
+function formatUpPercent(total: number): string {
+  const pct = total / 100;
+  return (pct % 1 === 0 ? String(Math.round(pct)) : String(parseFloat(pct.toFixed(2)))) + '%';
+}
+
+function SkillTooltip({
+  state,
+  onMouseEnter,
+  onMouseLeave,
+  onRequestClose,
+}: {
+  state: SkillTooltipState;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  onRequestClose?: () => void;
+}) {
+  const { t } = useTranslation('game-data');
+  const { t: tUi } = useTranslation();
+  const linkTextPopup = useLinkTextPopup();
+  const { skillId, isImagine, rank = 0, level = 30, score } = state;
+  const sd = isImagine ? getBattleImagineData(skillId) : getSkillData(skillId);
+  const ns = isImagine ? 'battleImagines' : 'skills';
+  const name = t(`${ns}.${skillId}.name`, { defaultValue: String(skillId) });
+  const desc = t(`${ns}.${skillId}.description`, { defaultValue: '' });
+  const activeSkillName = isImagine
+    ? t(`battleImagines.${skillId}.activeSkillName`, { defaultValue: '' })
+    : '';
+  const skillLabel = t(`${ns}.${skillId}.skillLabel`, {
+    returnObjects: true,
+    defaultValue: [],
+  }) as string[];
+  // ZTable未実装分は Dialogue に本文の代わりにテクスチャ名がそのまま入っている
+  // (例: "skill_aoyi_advanced_texture025")。フレーバーテキストとして意味を持たないため、
+  // dialogueを空扱いにして直下の区切り線(hr)ごと非表示にする。
+  const rawDialogue = isImagine
+    ? t(`battleImagines.${skillId}.dialogue`, { defaultValue: '' })
+    : '';
+  const dialogue = rawDialogue.startsWith('skill_aoyi_advanced_texture') ? '' : rawDialogue;
+  const passiveEffects = isImagine
+    ? ((sd as BattleImagineData | undefined)?.passiveEffects ?? [])
+    : [];
+  const passiveBufDescs = isImagine
+    ? (t(`battleImagines.${skillId}.passiveBufDescriptions`, {
+        returnObjects: true,
+        defaultValue: [],
+      }) as string[][])
+    : [];
+  const allActiveEffectParams = isImagine
+    ? (t(`battleImagines.${skillId}.activeEffectParams`, {
+        returnObjects: true,
+        defaultValue: [],
+      }) as [string, string[]][])
+    : [];
+  const activeEffectParams = allActiveEffectParams.filter(([, vals]) => vals[rank] !== '');
+  // クラススキルの性能値: 選択中のランク(G0-G6)とレベル(1-30)で値を組み立てる
+  const skillEffectParams = !isImagine
+    ? (t(`skills.${skillId}.activeEffectParams`, {
+        returnObjects: true,
+        defaultValue: [],
+      }) as [string, SkillEffectPart[]][])
+    : [];
+  const resolveSkillEffectPart = (part: SkillEffectPart): string => {
+    if (typeof part === 'string') return part;
+    if ('u' in part) {
+      const base = part.l[Math.max(0, Math.min(level, part.l.length) - 1)] ?? 0;
+      const inc = part.r[Math.min(rank, part.r.length - 1)] ?? 0;
+      const total = base + inc;
+      return part.u === 'up' ? formatUpPercent(total) : String(total);
+    }
+    if ('r' in part) return part.r[Math.min(rank, part.r.length - 1)] ?? '';
+    return part.l[Math.max(0, Math.min(level, part.l.length) - 1)] ?? '';
+  };
+  const skillEffectRows = skillEffectParams
+    .map(([label, parts]) => [label, parts.map(resolveSkillEffectPart).join('')] as const)
+    .filter(([, value]) => value !== '');
+  const iconUrl = isImagine
+    ? getImagineIconUrl((sd as BattleImagineData | undefined)?.icon ?? '')
+    : getSkillIconUrl((sd as SkillData | undefined)?.icon ?? '');
+
+  const hasPassive = passiveEffects.length > 0 || passiveBufDescs.length > 0;
+  const hasActiveContent = !!(
+    activeSkillName ||
+    desc ||
+    activeEffectParams.length > 0 ||
+    skillEffectRows.length > 0
+  );
+
+  return (
+    <FloatingTooltip
+      x={state.x}
+      y={state.y}
+      clamp
+      align={state.align}
+      className={`skill-tooltip${state.pinned ? ' skill-tooltip--pinned' : ''}`}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={state.pinned ? undefined : onMouseLeave}
+      onRequestClose={state.pinned ? onRequestClose : undefined}
+    >
+      <div className="skill-tooltip__header">
+        {iconUrl && <img className="skill-tooltip__icon" src={iconUrl} alt="" />}
+        <span className="skill-tooltip__name">{name}</span>
+      </div>
+      {/* イマジン: フレーバーテキスト(dialogue) → hr → タグ → アクティブ効果 → hr → パッシブ */}
+      {isImagine && dialogue && <p className="skill-tooltip__dialogue">&quot;{dialogue}&quot;</p>}
+      {skillLabel.length > 0 && (
+        <div className="skill-tooltip__tags">
+          {skillLabel.map((tag, i) => (
+            <span key={i} className="skill-tooltip__tag">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+      {hasActiveContent && <hr className="skill-tooltip__hr" />}
+      {activeSkillName && <div className="skill-tooltip__active-name">{activeSkillName}</div>}
+      {desc && <p className="skill-tooltip__desc">{renderMarkup(desc, linkTextPopup.handlers)}</p>}
+      {/* クラススキル: 説明(戦略行)の下に1行分空けて性能値を表示 */}
+      {!isImagine && skillEffectRows.length > 0 && (
+        <ul className="skill-tooltip__effect-list skill-tooltip__effect-list--skill">
+          {skillEffectRows.map(([label, value], i) => (
+            <li key={i} className="skill-tooltip__effect-item">
+              <span className="skill-tooltip__effect-label">
+                {renderMarkup(label, linkTextPopup.handlers)}
+              </span>
+              <span className="skill-tooltip__effect-val">{value}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {activeEffectParams.length > 0 && (
+        <ul className="skill-tooltip__effect-list">
+          {activeEffectParams.map(([label, vals], i) => (
+            <li key={i} className="skill-tooltip__effect-item">
+              <span className="skill-tooltip__effect-label">
+                {renderMarkup(label, linkTextPopup.handlers)}
+              </span>
+              <span className="skill-tooltip__effect-val">{vals[rank] ?? vals[0]}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {hasActiveContent && hasPassive && <hr className="skill-tooltip__hr" />}
+      {hasPassive && (
+        <div className="skill-tooltip__passive">
+          {passiveEffects.map((eff) => {
+            const value = eff[rank + 1] ?? eff[1];
+            // 会心/ファスト/幸運/器用さ/万能/レジストは%専用のAttrIdを持たず実数値レーティングのため、
+            // 他の%系(筋力等の基礎ステータス%ボーナスや最終ステータス%ボーナス)と区別して表示する。
+            // IMAGINE_FLAT_STATには会心ダメージ(RAW_PERCENT_STAT_IDS対象、raw/100=%の生値)も
+            // addStat経路として同居しているため、表示上の%要否はRAW_PERCENT_STAT_IDSで判定する。
+            const flatStatId = IMAGINE_FLAT_STAT[eff[0]];
+            const isFlat = flatStatId !== undefined && !RAW_PERCENT_STAT_IDS.has(flatStatId);
+            return (
+              <div key={eff[0]} className="skill-tooltip__passive-row">
+                <span className="skill-tooltip__passive-name">
+                  {t(`attributes.${eff[0]}`, { defaultValue: String(eff[0]) })}
+                </span>
+                <span className="skill-tooltip__passive-val">
+                  {isFlat ? `+${value}` : `+${(value / 100).toFixed(0)}%`}
+                </span>
+              </div>
+            );
+          })}
+          {passiveBufDescs.map((rankTexts, i) => {
+            const text = Array.isArray(rankTexts) ? (rankTexts[rank] ?? rankTexts[0]) : '';
+            return text ? (
+              <div key={`buf${i}`} className="skill-tooltip__passive-buf">
+                {renderMarkup(text, linkTextPopup.handlers)}
+              </div>
+            ) : null;
+          })}
+        </div>
+      )}
+      {score !== undefined && (
+        <>
+          <hr className="skill-tooltip__hr" />
+          <div className="skill-tooltip__score-row">
+            <span className="skill-tooltip__score-label">{tUi('buildPlanner.abilityScore')}</span>
+            <span className="skill-tooltip__score-value">{score.toLocaleString()}</span>
+          </div>
+        </>
+      )}
+      {/* ネストしたlinktextポップアップはDOM上ここに子として置く(position:fixedで見た目上は
+          独立して浮くが、外側クリックでこのFloatingTooltip自体を閉じるonRequestCloseの
+          contains()判定にひっかからないようにするため)。 */}
+      {linkTextPopup.popup && (
+        <LinkTextPopup
+          state={linkTextPopup.popup}
+          handlers={linkTextPopup.handlers}
+          onMouseEnter={linkTextPopup.cancelClose}
+          onMouseLeave={linkTextPopup.scheduleClose}
+        />
+      )}
+    </FloatingTooltip>
+  );
+}
+
+export default SkillTooltip;

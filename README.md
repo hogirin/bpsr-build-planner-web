@@ -19,14 +19,11 @@
 
 ## ローカル確認
 
-この作業環境ではNode.jsを使用していないため、依存関係のインストールや実ビルドは未実施です。
-Node.jsを使わずにソースをそのままブラウザで実行することはできません。ビルドは将来リポジトリへPushした際にGitHub Actions上で行う想定です。
+ローカル環境ではNode.jsを使用しません。依存関係のインストール、テスト、WebビルドはGitHub Actions上だけで実行します。
 
 ## GitHub Pages
 
-GitHub Pagesへ配置するのは、Webビルドで生成される `dist-web/` の内容です。
-このローカル版には、Node.jsを前提にした自動ビルドワークフローをまだ含めていません。
-ビルド方法と公開先リポジトリを決めた段階で、Pages用ワークフローを追加します。
+`main` ブランチへPushすると `.github/workflows/deploy-pages.yml` がテストとWebビルドを実行し、生成された `dist-web/` をGitHub Pagesへ公開します。
 
 Project Pagesの公開URLは通常、次の形式です。
 

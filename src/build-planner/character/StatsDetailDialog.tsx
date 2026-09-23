@@ -140,9 +140,14 @@ function Section({
 export default function StatsDetailDialog({ onClose, windowed = false }: StatsDetailDialogProps) {
   const { t } = useTranslation();
 
-  const { rawStats, rawStatsBreakdown, stats, derivedStats } = useBuildStore(
-    useShallow(computeStatsBundle),
-  );
+  const {
+    rawStats,
+    rawStatsBreakdown,
+    stats,
+    derivedStats,
+    atkSpeedDirectBonusPercent,
+    castSpeedDirectBonusPercent,
+  } = useBuildStore(useShallow(computeStatsBundle));
   const professionKey = useBuildStore((s) => s.professionKey);
   const profession = PROFESSIONS[professionKey];
   // 幸運の一撃回復の倍率は現状ヴァーダントオラクル/ビートパフォーマー(支援寄りの回復スキルを
@@ -453,6 +458,39 @@ export default function StatsDetailDialog({ onClose, windowed = false }: StatsDe
     }),
   ].filter((row): row is BuffRow => row !== null);
 
+  const speedBuffRow = (
+    statId: string,
+    label: string,
+    totalPercent: number,
+    directBonusPercent: number,
+  ): BuffRow | null => {
+    if (directBonusPercent === 0) return null;
+    return {
+      statId,
+      label,
+      initialValue: `${fmtDec2(totalPercent - directBonusPercent)}%`,
+      additive: '',
+      multiplier: '',
+      cookingBuff: `${fmtSigned(directBonusPercent)}%`,
+      total: fmtPct(totalPercent),
+    };
+  };
+
+  const speedBuffRows: BuffRow[] = [
+    speedBuffRow(
+      'atkSpeedPercent',
+      te('stat.atkSpeed'),
+      derivedStats.atkSpeedPercent,
+      atkSpeedDirectBonusPercent,
+    ),
+    speedBuffRow(
+      'castSpeedPercent',
+      te('stat.castSpeed'),
+      derivedStats.castSpeedPercent,
+      castSpeedDirectBonusPercent,
+    ),
+  ].filter((row): row is BuffRow => row !== null);
+
   const buffRows = [
     ...(illusionPowerRow ? [illusionPowerRow] : []),
     ...genericBuffRowsBeforeElemAtk,
@@ -460,6 +498,7 @@ export default function StatsDetailDialog({ onClose, windowed = false }: StatsDe
     ...genericBuffRowsElemAtk,
     ...elemBuffRows,
     ...enhanceBuffRows,
+    ...speedBuffRows,
     ...genericBuffRowsUntilCritRecovery,
     ...(luckyHitRecoveryRow ? [luckyHitRecoveryRow] : []),
     ...genericBuffRowsAfterCritRecovery,

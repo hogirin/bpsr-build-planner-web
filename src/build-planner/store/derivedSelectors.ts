@@ -296,6 +296,8 @@ export interface StatsBundle {
   talentNodesById: Map<number, TalentTreeNode>;
   r1NodeCount: number;
   skillReplacements: Record<number, number>;
+  atkSpeedDirectBonusPercent: number;
+  castSpeedDirectBonusPercent: number;
 }
 
 // state から stats/abilityScore 等の全派生値をまとめて計算する。各段は memoize1 済みの
@@ -491,5 +493,7 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     talentNodesById,
     r1NodeCount,
     skillReplacements,
+    atkSpeedDirectBonusPercent: rawStatsResult.atkSpeedFinalPctAddend + suitAtkSpeedBonus,
+    castSpeedDirectBonusPercent: rawStatsResult.castSpeedFinalPctAddend,
   };
 }

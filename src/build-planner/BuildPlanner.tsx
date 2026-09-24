@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import './build-planner.css';
 import './components/components.css';
 import CharacterPanel from './character/CharacterPanel';
+import { useCollapsiblePanel } from './components/useCollapsiblePanel';
 import EquipmentPanel from './equipment/EquipmentPanel';
 import ModulePanel from './module/ModulePanel';
 import { getSTAsset, iconPathToFile, stData } from './phantom/phantomData';
@@ -87,6 +88,10 @@ function BuildPlanner() {
         defaultValue: '心相投影ツリーが無効です',
       });
 
+  const [characterPanelCollapsed, toggleCharacterPanelCollapsed] = useCollapsiblePanel(
+    'bpsr-character-panel-collapsed',
+  );
+
   const [activeTab, setActiveTab] = useState<Tab>('skill');
   const [showTalentTree, setShowTalentTree] = useState(false);
   const [showStatsDetail, setShowStatsDetail] = useState(false);
@@ -130,6 +135,8 @@ function BuildPlanner() {
         <CharacterPanel
           onOpenTalentTree={() => setShowTalentTree(true)}
           onOpenStatsDetail={() => setShowStatsDetail(true)}
+          collapsed={characterPanelCollapsed}
+          onToggleCollapsed={toggleCharacterPanelCollapsed}
         />
         <div className="build-planner__right">
           <nav className="build-planner__tabs">

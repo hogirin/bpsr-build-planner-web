@@ -183,6 +183,40 @@
   max-width: 480px;
 }
 
+/* インポート/エクスポート等、textareaを含み情報量が多いダイアログをスマホでは
+   画面全面のフルスクリーンにする(equipment-dialog--wideと同じ方針)。 */
+@media (max-width: 767px), (orientation: landscape) and (max-height: 500px) {
+  .draggable-dialog.confirm-dialog--wide {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 0;
+    overflow-y: auto;
+  }
+}
+
+/* シェアダイアログ: PC表示のサイズはconfirm-dialogのまま変更せず、スマホでのみ
+   フルスクリーンにする。 */
+@media (max-width: 767px), (orientation: landscape) and (max-height: 500px) {
+  .draggable-dialog.share-build-dialog {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 0;
+    overflow-y: auto;
+  }
+}
+
 .confirm-dialog__textarea {
   background: #15151b;
   border: 1px solid #3a3a50;
@@ -371,6 +405,12 @@
   line-height: 1.5;
   color: #e8e6e1;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  /* clamp時、枠の高さが画面に収まりきらない場合はFloatingTooltip側でmax-heightを
+     設定する。その場合に中身をスクロール可能にする(通常時はmax-height未指定の
+     ため何もしない)。border-boxにしないとpadding/border分だけmax-heightより
+     実際の描画サイズが大きくなり、わずかに画面をはみ出してしまう。 */
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 /* スキル/アビリティ説明のインラインマークアップ(renderMarkup) */

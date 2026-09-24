@@ -182,6 +182,7 @@ function ShareBuildButton({ open, onOpenChange, onSwitchToExport }: ShareBuildBu
           closeOnOverlayClick={false}
           closeIcon
           hideConfirmButton
+          className="share-build-dialog"
         >
           <button
             type="button"

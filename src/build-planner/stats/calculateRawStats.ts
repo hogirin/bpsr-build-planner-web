@@ -82,8 +82,6 @@ import {
   TALENT_RAW_FLAT_TO_STAT,
   TALENT_TYPE1_ONLY_FINAL_PCT,
 } from './attrMaps';
-import { diminishingPercent } from './formulas';
-import { STAT_BASE_PERCENT, STAT_SEASON_CONSTANT } from './seasonConstants';
 import {
   calcModuleEffectLevels,
   enchantEffectsById,
@@ -718,7 +716,7 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
     }
   }
 
-  // 絆レベル「5ステータス中最大の1項目」判定用のベース値スナップショット。装備・アビリティ・
+  // 絆レベル「5ステータス中で実数値が最大の1項目」判定用のベース値スナップショット。装備・アビリティ・
   // バトルイマジン・冒険者レベル・潜在レベル(常時反映分)までの値のみを使い、これから適用する
   // 潜在因子効果(極性因子の%ボーナス含む)・絆レベル効果自身による変動は含めない
   // (2026-09-02不具合報告: 判定基準に極性因子の%ボーナスが混ざると、心相投影のON/OFFで
@@ -731,13 +729,6 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
     COMMON_STAT_COEFFICIENTS.hastePerAgilityPoint,
     conversionRateBonus.haste ?? 0,
   );
-  type BondComparableStat = 'crit' | 'haste' | 'luck' | 'mastery' | 'versatility';
-  const getBaseDisplayedPercent = (stat: BondComparableStat): number =>
-    diminishingPercent(
-      highestOfBaseStats[stat],
-      STAT_SEASON_CONSTANT[stat],
-      STAT_BASE_PERCENT[stat],
-    );
 
   // 潜在因子効果 (enabled 時のみ)。ツリー(テンプレート)自体が未開放の場合はphantomEnabledが
   // 自動的にfalseになる(store側、setPhantomTemplateId/setPhantomLevel)ため、ここでは
@@ -838,7 +829,8 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
 
   // 絆レベル効果 (enabled 時のみ)
   // 「最も高い1項目に加算」は highestOfBaseStats (潜在因子効果・絆レベル効果自身より前の
-  // スナップショット、上記コメント参照) を参照して決定する。
+  // 実数値スナップショット、上記コメント参照) を参照して決定する。表示%は各ステータスで
+  // 基礎率・シーズン定数が異なるため、ゲーム内の判定基準には使わない。
   if (phantomEnabled && phantomTemplateId != null) {
     const tmpl = seasonTalentData.templates[String(phantomTemplateId)];
     if (tmpl) {
@@ -854,7 +846,7 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
             if (eff.type === 'static') {
               addStat(eff.stat, eff.value);
             } else if (eff.type === 'highest_of') {
-              // highestOfBaseStats(潜在因子効果より前のスナップショット)から最大値の stat に
+              // highestOfBaseStats(潜在因子効果より前の実数値スナップショット)から最大値の stat に
               // 加算する。totalそのものを比較に使うと、潜在因子の極性バフ(%ボーナス)や絆レベル
               // 効果自身の加算(同種の他レベル分)が判定に混ざってしまい、心相投影のON/OFFで
               // 判定結果自体が変わってしまう(2026-09-02不具合報告: ファストの方が高いはずの
@@ -862,11 +854,7 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
               // 付与されていた)。
               let maxStat = eff.stats[0];
               for (const s of eff.stats.slice(1)) {
-                if (
-                  getBaseDisplayedPercent(s as BondComparableStat) >
-                  getBaseDisplayedPercent(maxStat as BondComparableStat)
-                )
-                  maxStat = s;
+                if (highestOfBaseStats[s] > highestOfBaseStats[maxStat]) maxStat = s;
               }
               addStat(maxStat, eff.value);
             } else if (eff.type === 'final_pct') {

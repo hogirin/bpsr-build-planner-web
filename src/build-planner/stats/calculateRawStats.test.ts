@@ -974,7 +974,8 @@ describe('calculateRawStats', () => {
     // Level 6 (unlockFraction 35) is template-specific and excluded here (bondPoints=25).
     // Per src/locales/*/game-data.json attrDescs: each of 3003610/20/40 grants
     // illusionPower+100/endurance+750; 3003630/50 additionally grant endurance+750 each.
-    // 「最も高い」は実数値で比較する。同値の場合は効果文の先頭にあるcritが選ばれる。
+    // masteryは実数値0でも基礎率6%だが、ゲーム内の絆効果は表示率ではなく実数値を比較する。
+    // この初期構成では敏捷からの変換分を含むhasteが選ばれる。
     const input: CalculateRawStatsInput = {
       ...baseInput(),
       phantomEnabled: true,
@@ -987,33 +988,8 @@ describe('calculateRawStats', () => {
     expect(result.rawStats.illusionPower).toBe(BASE_STATS.illusionPower + 100 * 3);
     expect(result.rawStats.endurance).toBe(BASE_STATS.endurance + 750 * 5);
     expect(result.rawStats.mastery).toBe(BASE_STATS.mastery);
-    expect(result.rawStats.crit).toBe(BASE_STATS.crit + 750 + 1250);
-    expect(result.rawStats.haste).toBe(BASE_STATS.haste);
-  });
-
-  it('selects the highest raw five-stat for bond rewards instead of the highest displayed percent', () => {
-    // masteryは実数値0でも基礎率6%だが、ゲーム内の絆効果は表示率ではなく実数値を比較する。
-    // haste実数値100を用意し、Lv3/Lv5の合計+2000がhasteへ付くことを確認する。
-    const input: CalculateRawStatsInput = {
-      ...baseInput(),
-      equipped: {
-        weapon: makeEquipmentItem({
-          slot: 'weapon',
-          part: 200,
-          quality: 4,
-          baseStats: [[11122, 100, 100]],
-        }),
-      },
-      phantomEnabled: true,
-      phantomTemplateId: 1,
-      phantomBondPoints: 25,
-    };
-
-    const result = calculateRawStats(input);
-
-    expect(result.rawStats.haste).toBe(BASE_STATS.haste + 100 + 750 + 1250);
-    expect(result.rawStats.mastery).toBe(BASE_STATS.mastery);
     expect(result.rawStats.crit).toBe(BASE_STATS.crit);
+    expect(result.rawStats.haste).toBe(BASE_STATS.haste + 750 + 1250);
   });
 
   it('applies the conditional intellect factor as active for the static planner snapshot', () => {

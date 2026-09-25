@@ -1,9 +1,10 @@
-import { useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import './character.css';
 import ProfessionPicker from './ProfessionPicker';
 import PlanManager from './PlanManager';
+import CharacterPanelFooter from './CharacterPanelFooter';
 import AbilityScoreDialog from './AbilityScoreDialog';
 import BuffEffectDialog from './BuffEffectDialog';
 import DraggableDialog from '../components/DraggableDialog';
@@ -108,6 +109,10 @@ function CharacterPanel({
   // パネル(スキル/装備等)側に重ねて表示される。
   const panelRef = useRef<HTMLElement>(null);
   const illusionPowerRowRef = useRef<HTMLDivElement>(null);
+  // スクロールバーが出ている間は、それ自体が折りたたみトグルとの間に隙間を作るため、
+  // ヘッダーの右余白を少し狭める。
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [hasVerticalScrollbar, setHasVerticalScrollbar] = useState(false);
   const [levelPickerOpen, setLevelPickerOpen] = useState(false);
   const [abilityScoreOpen, setAbilityScoreOpen] = useState(false);
   const [buffEffectOpen, setBuffEffectOpen] = useState(false);
@@ -119,6 +124,22 @@ function CharacterPanel({
       else next.add(key);
       return next;
     });
+
+  useEffect(() => {
+    if (collapsed) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const check = () => setHasVerticalScrollbar(el.scrollHeight > el.clientHeight);
+    check();
+    const resizeObserver = new ResizeObserver(check);
+    resizeObserver.observe(el);
+    const mutationObserver = new MutationObserver(check);
+    mutationObserver.observe(el, { childList: true, subtree: true, attributes: true });
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [collapsed]);
 
   const statDefinitions = getStatDefinitions(PROFESSIONS[professionKey]);
   const leftStats = statDefinitions.filter((def) => def.column === 'left');
@@ -163,7 +184,10 @@ function CharacterPanel({
         {collapsed ? '›' : '‹'}
       </button>
       {!collapsed && (
-        <div className="character-panel__scroll">
+        <div
+          className={`character-panel__scroll${hasVerticalScrollbar ? ' character-panel__scroll--has-scrollbar' : ''}`}
+          ref={scrollRef}
+        >
           {/* プラン管理(名称入力・保存・一覧・各種ダイアログ) */}
           <PlanManager />
 
@@ -305,6 +329,8 @@ function CharacterPanel({
           >
             {t('buildPlanner.buffDialog.openButton')}
           </button>
+
+          <CharacterPanelFooter />
 
           {statPopup !== null && (
             <StatTooltip

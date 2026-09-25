@@ -6,6 +6,7 @@ import { buildLineShareIntentUrl, buildXShareIntentUrl } from './shareIntents';
 import { buildLongShareUrl } from './longUrl';
 import { computeStatsBundle } from '../store/derivedSelectors';
 import { useBuildStore } from '../store/useBuildStore';
+import { buildAiConsultationText } from './aiConsultationExport';
 
 // シェア系のポップアップ(X/LINE)を、新しいタブではなく従来の共有ボタンに近い小さな
 // ポップアップウィンドウとして開く。noopenerによりwindow.openerは渡さない。
@@ -94,11 +95,13 @@ function ShareBuildButton({ open, onOpenChange, onSwitchToExport }: ShareBuildBu
   const [loading, setLoading] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
   const [textCopied, setTextCopied] = useState(false);
+  const [aiTextCopied, setAiTextCopied] = useState(false);
 
   const handleOpen = () => {
     setShortUrl(null);
     setUrlCopied(false);
     setTextCopied(false);
+    setAiTextCopied(false);
     onOpenChange(true);
   };
 
@@ -154,6 +157,13 @@ function ShareBuildButton({ open, onOpenChange, onSwitchToExport }: ShareBuildBu
   const handleCopyText = () => {
     if (!shortUrl) return;
     void copyToClipboard(buildShareMessage(shortUrl), setTextCopied);
+  };
+
+  const handleCopyAiText = () => {
+    const state = useBuildStore.getState();
+    const shareUrl = buildLongShareUrl(state.exportPlanCode());
+    const text = buildAiConsultationText(state, { shareUrl, t, tGame });
+    void copyToClipboard(text, setAiTextCopied);
   };
 
   return (
@@ -255,6 +265,18 @@ function ShareBuildButton({ open, onOpenChange, onSwitchToExport }: ShareBuildBu
               </button>
             </div>
           </div>
+
+          <button
+            type="button"
+            className="confirm-dialog__btn confirm-dialog__btn--cancel"
+            onClick={handleCopyAiText}
+          >
+            {aiTextCopied
+              ? t('buildPlanner.copied', { defaultValue: 'コピーしました' })
+              : t('buildPlanner.copyAiConsultationText', {
+                  defaultValue: 'AI相談用テキストをコピー',
+                })}
+          </button>
 
         </ConfirmDialog>
       )}

@@ -194,6 +194,7 @@
     "shareOnX": "Xで共有",
     "shareOnLine": "LINEで共有",
     "shareCopyText": "本文をコピー",
+    "copyAiConsultationText": "AI相談用テキストをコピー",
     "shareText": "{{className}}のビルドを作成しました\n能力スコア: {{score}}\n{{url}}",
     "shareXHashtags": "#スタレゾ\n#bpsr_bp",
     "shortUrlErrorMsg": "短縮URLの発行に失敗しました。しばらくしてからもう一度お試しください。",

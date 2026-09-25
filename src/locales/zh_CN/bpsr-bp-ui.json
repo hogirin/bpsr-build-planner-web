@@ -194,6 +194,7 @@
     "shareOnX": "分享到X",
     "shareOnLine": "分享到LINE",
     "shareCopyText": "复制文本",
+    "copyAiConsultationText": "复制 AI 咨询用文本",
     "shareText": "创建了{{className}}的构筑\n能力评分: {{score}}\n{{url}}",
     "shareXHashtags": "#星痕共鸣\n#bpsr_bp",
     "shortUrlErrorMsg": "短链接生成失败，请稍后重试。",

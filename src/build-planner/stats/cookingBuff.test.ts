@@ -3,6 +3,7 @@ import { PROFESSIONS } from '../profession';
 import type { StatId } from '../types';
 import { BASE_STATS } from './baseStats';
 import {
+  computeCookingAdjustmentResult,
   computeCookingAdjustments,
   getStatCorrectionTargets,
   INSPIRATION_PERCENT_STAT_IDS,
@@ -71,6 +72,29 @@ describe('computeCookingAdjustments', () => {
     const adjustments = computeCookingAdjustments(finalStats, 'atk', 0, 0, 35, 15, 0, rawStats);
 
     expect(adjustments).toEqual([
+      { statId: 'luck', addend: 35 },
+      { statId: 'haste', addend: 15 },
+    ]);
+  });
+
+  it('reports the exact targets selected by the existing conditional adjustment calculation', () => {
+    const finalStats = { ...zeroStats(), crit: 10, haste: 200, luck: 90, mastery: 5, versatility: 5 };
+    const rawStats = { ...zeroStats(), crit: 8, haste: 40, luck: 500, mastery: 5, versatility: 5 };
+
+    const result = computeCookingAdjustmentResult(
+      finalStats,
+      'atk',
+      0,
+      0,
+      35,
+      15,
+      0,
+      rawStats,
+    );
+
+    expect(result.highestRawTarget).toBe('luck');
+    expect(result.lifeWaveTarget).toBe('haste');
+    expect(result.adjustments).toEqual([
       { statId: 'luck', addend: 35 },
       { statId: 'haste', addend: 15 },
     ]);

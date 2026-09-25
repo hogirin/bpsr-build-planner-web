@@ -131,6 +131,12 @@ export interface CookingAdjustment {
   addend?: number;
 }
 
+export interface CookingAdjustmentResult {
+  adjustments: CookingAdjustment[];
+  highestRawTarget: StatId | null;
+  lifeWaveTarget: StatId | null;
+}
+
 // 適応力(乗算)→料理攻撃力(加算)→鼓舞(複数statへの加算)→アビリティ(二段増幅、実数値が
 // 最大のstat種別へ加算)→HP変動(その時点の最終%表示値が最大のstat種別へ加算)の順で、
 // 最終ステータス(finalStats)に対する調整リストを算出する。二段増幅とHP変動は「最大stat」の
@@ -139,7 +145,7 @@ export interface CookingAdjustment {
 // 込みのhasteReal)で判定するのに対し、HP変動(パワーコア)はfinalStatsのスクラッチコピー
 // (working、それ以前の調整が適用済みの最終%表示値)で判定する。呼び出し側はこのリストを
 // 自身の出力形(実数値 / StatBreakdownEntryの multiplier・cookingBonus)に適用するだけでよい。
-export function computeCookingAdjustments(
+export function computeCookingAdjustmentResult(
   finalStats: Record<StatId, number>,
   cookingAtkStatId: StatId,
   cookingAtkBonus: number,
@@ -152,9 +158,11 @@ export function computeCookingAdjustments(
   highestOfFiveRawStats: Record<StatId, number>,
   // ステータス補正(仮)の最終値補正(finalValue)分。無効時は呼び出し側で{}を渡す。
   statCorrections: Partial<Record<StatId, StatCorrectionEntry>> = {},
-): CookingAdjustment[] {
+): CookingAdjustmentResult {
   const adjustments: CookingAdjustment[] = [];
   const working = { ...finalStats };
+  let highestRawTarget: StatId | null = null;
+  let lifeWaveTarget: StatId | null = null;
 
   if (agileAtkMultPercent !== 0) {
     const multiplier = 1 + agileAtkMultPercent / 100;
@@ -171,19 +179,20 @@ export function computeCookingAdjustments(
       adjustments.push({ statId, addend: inspirationPercentBonus });
     }
   }
-  const addToHighestOf = (bonus: number, basis: Record<StatId, number>) => {
-    if (bonus === 0) return;
+  const addToHighestOf = (bonus: number, basis: Record<StatId, number>): StatId | null => {
+    if (bonus === 0) return null;
     let maxStatId = INSPIRATION_PERCENT_STAT_IDS[0];
     for (const statId of INSPIRATION_PERCENT_STAT_IDS.slice(1)) {
       if (basis[statId] > basis[maxStatId]) maxStatId = statId;
     }
     working[maxStatId] += bonus;
     adjustments.push({ statId: maxStatId, addend: bonus });
+    return maxStatId;
   };
   // 二段増幅: 実数値(収益逓減曲線適用前)基準。
-  addToHighestOf(highestStatFinalPctBonus, highestOfFiveRawStats);
+  highestRawTarget = addToHighestOf(highestStatFinalPctBonus, highestOfFiveRawStats);
   // HP変動(パワーコア): その時点の最終%表示値基準。
-  addToHighestOf(lifeWaveBonus, working);
+  lifeWaveTarget = addToHighestOf(lifeWaveBonus, working);
 
   for (const [statId, entry] of Object.entries(statCorrections) as [
     StatId,
@@ -194,7 +203,15 @@ export function computeCookingAdjustments(
     adjustments.push({ statId, addend: entry.finalValue });
   }
 
-  return adjustments;
+  return { adjustments, highestRawTarget, lifeWaveTarget };
+}
+
+// 既存呼び出し・テスト向けの配列APIは維持する。対象ステータスも必要な呼び出し元だけ、
+// computeCookingAdjustmentResult() の付帯情報を参照する。
+export function computeCookingAdjustments(
+  ...args: Parameters<typeof computeCookingAdjustmentResult>
+): CookingAdjustment[] {
+  return computeCookingAdjustmentResult(...args).adjustments;
 }
 
 // ステータス補正(仮)パネルの対象ステータス一覧(クラスのメイン攻撃力に応じて解決。

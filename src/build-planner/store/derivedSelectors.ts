@@ -22,7 +22,7 @@ import type { CalculateRawStatsInput } from '../stats/calculateRawStats';
 import {
   AGILE_VALUES,
   applyCookingBuff,
-  computeCookingAdjustments,
+  computeCookingAdjustmentResult,
   INSPIRATION_VALUES,
   LIFE_WAVE_VALUES,
   POWER_CORE_EFFECT_IDS,
@@ -96,7 +96,7 @@ export const selectCookingResult = memoize1((cookingBuff: CookingBuffState) =>
 );
 
 // statCorrectionEnabled=falseの際にcomputeCookingAdjustmentsへ渡す空オブジェクト。呼び出し側
-// (computeStatsBundle)で都度{}リテラルを生成すると、selectCookingAdjustments(memoize1)の
+// (computeStatsBundle)で都度{}リテラルを生成すると、selectCookingAdjustmentResult(memoize1)の
 // 引数がObject.is比較で常に不一致になりキャッシュが効かず、以降のselectStatsWithCooking等の
 // 参照も毎回変わって無限再レンダリングを引き起こすため、安定した参照として切り出す。
 const EMPTY_STAT_CORRECTIONS: Partial<Record<StatId, StatCorrectionEntry>> = {};
@@ -106,7 +106,7 @@ export const selectDerivedStats = memoize1((...args: Parameters<typeof deriveSta
 );
 
 // computeCookingAdjustmentsの「二段増幅」判定用の実数値(%変換前)。rawStatsを
-// そのままスプレッドすると毎回新規オブジェクトになりselectCookingAdjustments(memoize1)のキャッシュが
+// そのままスプレッドすると毎回新規オブジェクトになりselectCookingAdjustmentResult(memoize1)のキャッシュが
 // 効かなくなる(EMPTY_STAT_CORRECTIONSと同じ理由)ため、rawStats参照とhasteReal値が両方
 // 前回と同じ場合のみ同一オブジェクトを返すよう1スロットメモ化する。
 const selectHighestOfFiveRawStats = memoize1(
@@ -170,8 +170,9 @@ const selectDerivedStatsWithFinalAdjustments = memoize1(
   },
 );
 
-export const selectCookingAdjustments = memoize1(
-  (...args: Parameters<typeof computeCookingAdjustments>) => computeCookingAdjustments(...args),
+export const selectCookingAdjustmentResult = memoize1(
+  (...args: Parameters<typeof computeCookingAdjustmentResult>) =>
+    computeCookingAdjustmentResult(...args),
 );
 
 // 器用さ→ステータス(クラス×型固有効果)を適用したrawStats。1スロットメモ化しないと
@@ -233,7 +234,7 @@ const selectStatsWithMasteryFinalPctBonus = memoize1(
 const selectStatsWithCooking = memoize1(
   (
     finalStats: Record<StatId, number>,
-    cookingAdjustments: ReturnType<typeof computeCookingAdjustments>,
+    cookingAdjustments: ReturnType<typeof computeCookingAdjustmentResult>['adjustments'],
   ) => {
     if (cookingAdjustments.length === 0) return finalStats;
     const result = { ...finalStats };
@@ -248,7 +249,7 @@ const selectStatsWithCooking = memoize1(
 const selectBreakdownWithCooking = memoize1(
   (
     finalBreakdown: ReturnType<typeof applyFinalStatModifiers>['breakdown'],
-    cookingAdjustments: ReturnType<typeof computeCookingAdjustments>,
+    cookingAdjustments: ReturnType<typeof computeCookingAdjustmentResult>['adjustments'],
   ) => {
     if (cookingAdjustments.length === 0) return finalBreakdown;
     const merged = { ...finalBreakdown };
@@ -298,6 +299,8 @@ export interface StatsBundle {
   skillReplacements: Record<number, number>;
   atkSpeedDirectBonusPercent: number;
   castSpeedDirectBonusPercent: number;
+  highestRawConditionalTarget: StatId | null;
+  lifeWaveTarget: StatId | null;
 }
 
 // state から stats/abilityScore 等の全派生値をまとめて計算する。各段は memoize1 済みの
@@ -374,7 +377,7 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     state.moduleSlots,
   );
 
-  const cookingAdjustments = selectCookingAdjustments(
+  const cookingAdjustmentResult = selectCookingAdjustmentResult(
     finalStatsResult.stats,
     cookingAtkStatId,
     cookingResult.atkBonus,
@@ -387,6 +390,7 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
       ? state.cookingBuff.statCorrections
       : EMPTY_STAT_CORRECTIONS,
   );
+  const cookingAdjustments = cookingAdjustmentResult.adjustments;
 
   const stats = selectStatsWithCooking(finalStatsResult.stats, cookingAdjustments);
   const rawStatsBreakdown = selectBreakdownWithCooking(
@@ -495,5 +499,7 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     skillReplacements,
     atkSpeedDirectBonusPercent: rawStatsResult.atkSpeedFinalPctAddend + suitAtkSpeedBonus,
     castSpeedDirectBonusPercent: rawStatsResult.castSpeedFinalPctAddend,
+    highestRawConditionalTarget: cookingAdjustmentResult.highestRawTarget,
+    lifeWaveTarget: cookingAdjustmentResult.lifeWaveTarget,
   };
 }

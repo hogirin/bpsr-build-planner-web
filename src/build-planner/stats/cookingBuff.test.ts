@@ -94,10 +94,30 @@ describe('computeCookingAdjustments', () => {
 
     expect(result.highestRawTarget).toBe('luck');
     expect(result.lifeWaveTarget).toBe('haste');
+    expect(result.lifeWaveCandidateTarget).toBe('haste');
     expect(result.adjustments).toEqual([
       { statId: 'luck', addend: 35 },
       { statId: 'haste', addend: 15 },
     ]);
+  });
+
+  it('reports the hpShift candidate even when the conditional effect is not currently applied', () => {
+    const finalStats = { ...zeroStats(), crit: 10, haste: 200, luck: 90, mastery: 5, versatility: 5 };
+
+    const result = computeCookingAdjustmentResult(
+      finalStats,
+      'atk',
+      0,
+      0,
+      0,
+      0,
+      0,
+      zeroStats(),
+    );
+
+    expect(result.lifeWaveCandidateTarget).toBe('haste');
+    expect(result.lifeWaveTarget).toBeNull();
+    expect(result.adjustments).toEqual([]);
   });
 
   it('applies all five adjustments together in the documented order (adaptability, cooking, morale, highestStatFinalPctBonus, hpShift)', () => {

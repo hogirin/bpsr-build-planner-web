@@ -135,6 +135,7 @@ export interface CookingAdjustmentResult {
   adjustments: CookingAdjustment[];
   highestRawTarget: StatId | null;
   lifeWaveTarget: StatId | null;
+  lifeWaveCandidateTarget: StatId;
 }
 
 // 適応力(乗算)→料理攻撃力(加算)→鼓舞(複数statへの加算)→アビリティ(二段増幅、実数値が
@@ -179,12 +180,16 @@ export function computeCookingAdjustmentResult(
       adjustments.push({ statId, addend: inspirationPercentBonus });
     }
   }
-  const addToHighestOf = (bonus: number, basis: Record<StatId, number>): StatId | null => {
-    if (bonus === 0) return null;
+  const findHighestOf = (basis: Record<StatId, number>): StatId => {
     let maxStatId = INSPIRATION_PERCENT_STAT_IDS[0];
     for (const statId of INSPIRATION_PERCENT_STAT_IDS.slice(1)) {
       if (basis[statId] > basis[maxStatId]) maxStatId = statId;
     }
+    return maxStatId;
+  };
+  const addToHighestOf = (bonus: number, basis: Record<StatId, number>): StatId | null => {
+    if (bonus === 0) return null;
+    const maxStatId = findHighestOf(basis);
     working[maxStatId] += bonus;
     adjustments.push({ statId: maxStatId, addend: bonus });
     return maxStatId;
@@ -192,6 +197,7 @@ export function computeCookingAdjustmentResult(
   // 二段増幅: 実数値(収益逓減曲線適用前)基準。
   highestRawTarget = addToHighestOf(highestStatFinalPctBonus, highestOfFiveRawStats);
   // HP変動(パワーコア): その時点の最終%表示値基準。
+  const lifeWaveCandidateTarget = findHighestOf(working);
   lifeWaveTarget = addToHighestOf(lifeWaveBonus, working);
 
   for (const [statId, entry] of Object.entries(statCorrections) as [
@@ -203,7 +209,7 @@ export function computeCookingAdjustmentResult(
     adjustments.push({ statId, addend: entry.finalValue });
   }
 
-  return { adjustments, highestRawTarget, lifeWaveTarget };
+  return { adjustments, highestRawTarget, lifeWaveTarget, lifeWaveCandidateTarget };
 }
 
 // 既存呼び出し・テスト向けの配列APIは維持する。対象ステータスも必要な呼び出し元だけ、

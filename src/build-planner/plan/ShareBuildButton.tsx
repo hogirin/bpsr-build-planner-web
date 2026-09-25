@@ -1,12 +1,17 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ConfirmDialog from '../components/ConfirmDialog';
+import Chevron from '../components/Chevron';
+import Dropdown from '../components/Dropdown';
 import { formatProfessionLabel } from '../profession';
 import { buildLineShareIntentUrl, buildXShareIntentUrl } from './shareIntents';
 import { buildLongShareUrl } from './longUrl';
 import { computeStatsBundle } from '../store/derivedSelectors';
 import { useBuildStore } from '../store/useBuildStore';
-import { buildAiConsultationText } from './aiConsultationExport';
+import {
+  buildAiConsultationText,
+  type AiExportProfile,
+} from './aiConsultationExport';
 
 // シェア系のポップアップ(X/LINE)を、新しいタブではなく従来の共有ボタンに近い小さな
 // ポップアップウィンドウとして開く。noopenerによりwindow.openerは渡さない。
@@ -95,13 +100,13 @@ function ShareBuildButton({ open, onOpenChange, onSwitchToExport }: ShareBuildBu
   const [loading, setLoading] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
   const [textCopied, setTextCopied] = useState(false);
-  const [aiTextCopied, setAiTextCopied] = useState(false);
+  const [aiCopiedProfile, setAiCopiedProfile] = useState<AiExportProfile | null>(null);
 
   const handleOpen = () => {
     setShortUrl(null);
     setUrlCopied(false);
     setTextCopied(false);
-    setAiTextCopied(false);
+    setAiCopiedProfile(null);
     onOpenChange(true);
   };
 
@@ -159,11 +164,11 @@ function ShareBuildButton({ open, onOpenChange, onSwitchToExport }: ShareBuildBu
     void copyToClipboard(buildShareMessage(shortUrl), setTextCopied);
   };
 
-  const handleCopyAiText = () => {
+  const handleCopyAiText = (profile: AiExportProfile) => {
     const state = useBuildStore.getState();
     const shareUrl = buildLongShareUrl(state.exportPlanCode());
-    const text = buildAiConsultationText(state, { shareUrl, t, tGame });
-    void copyToClipboard(text, setAiTextCopied);
+    const text = buildAiConsultationText(state, { shareUrl, t, tGame }, profile);
+    void copyToClipboard(text, (ok) => setAiCopiedProfile(ok ? profile : null));
   };
 
   return (
@@ -266,18 +271,48 @@ function ShareBuildButton({ open, onOpenChange, onSwitchToExport }: ShareBuildBu
             </div>
           </div>
 
-          <button
-            type="button"
-            className="confirm-dialog__btn confirm-dialog__btn--cancel"
-            onClick={handleCopyAiText}
-          >
-            {aiTextCopied
-              ? t('buildPlanner.copied', { defaultValue: 'コピーしました' })
-              : t('buildPlanner.copyAiConsultationText', {
-                  defaultValue: 'AI相談用テキストをコピー',
-                })}
-          </button>
-
+          <div className="share-dialog__ai-export">
+            <button
+              type="button"
+              className="confirm-dialog__btn confirm-dialog__btn--cancel share-dialog__ai-export-main"
+              onClick={() => handleCopyAiText('compact')}
+            >
+              {aiCopiedProfile === 'compact'
+                ? t('buildPlanner.copied', { defaultValue: 'コピーしました' })
+                : aiCopiedProfile === 'debug'
+                  ? t('buildPlanner.aiDebugCopied', {
+                      defaultValue: '詳細・Debug版をコピーしました',
+                    })
+                  : t('buildPlanner.copyAiConsultationText', {
+                      defaultValue: 'AI相談用テキストをコピー',
+                    })}
+            </button>
+            <Dropdown
+              triggerClassName="confirm-dialog__btn confirm-dialog__btn--cancel share-dialog__ai-export-menu-trigger"
+              renderTrigger={(isOpen) => <Chevron open={isOpen} />}
+              triggerTitle={t('buildPlanner.aiExportOptions', {
+                defaultValue: 'AI Exportの選択肢',
+              })}
+              panelClassName="share-dialog__ai-export-menu"
+              panelWidthScale={5}
+              maxPanelHeight={120}
+            >
+              {(close) => (
+                <button
+                  type="button"
+                  className="share-dialog__ai-export-menu-item"
+                  onClick={() => {
+                    handleCopyAiText('debug');
+                    close();
+                  }}
+                >
+                  {t('buildPlanner.copyAiConsultationDebugText', {
+                    defaultValue: '詳細・Debug版をコピー',
+                  })}
+                </button>
+              )}
+            </Dropdown>
+          </div>
         </ConfirmDialog>
       )}
     </>

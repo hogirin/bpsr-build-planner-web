@@ -301,6 +301,7 @@ export interface StatsBundle {
   castSpeedDirectBonusPercent: number;
   highestRawConditionalTarget: StatId | null;
   lifeWaveTarget: StatId | null;
+  lifeWaveCandidateTarget: StatId;
 }
 
 // state から stats/abilityScore 等の全派生値をまとめて計算する。各段は memoize1 済みの
@@ -501,5 +502,6 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     castSpeedDirectBonusPercent: rawStatsResult.castSpeedFinalPctAddend,
     highestRawConditionalTarget: cookingAdjustmentResult.highestRawTarget,
     lifeWaveTarget: cookingAdjustmentResult.lifeWaveTarget,
+    lifeWaveCandidateTarget: cookingAdjustmentResult.lifeWaveCandidateTarget,
   };
 }

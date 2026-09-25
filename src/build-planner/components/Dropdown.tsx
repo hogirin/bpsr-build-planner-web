@@ -31,6 +31,8 @@ interface DropdownProps {
   onTriggerKeyDown?: (e: ReactKeyboardEvent<HTMLButtonElement>) => void;
   /** パネルの既定の最大高さ(px)。画面の余白がこれより狭い場合はさらに縮められる。既定320。 */
   maxPanelHeight?: number;
+  triggerTitle?: string;
+  triggerAriaLabel?: string;
 }
 
 // 「トリガーボタン → document.bodyへportalした固定位置の選択肢パネル」という
@@ -47,6 +49,8 @@ function Dropdown({
   panelWidthScale = 1,
   onTriggerKeyDown,
   maxPanelHeight = 320,
+  triggerTitle,
+  triggerAriaLabel,
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [pos, setPos] = useState<{
@@ -146,6 +150,8 @@ function Dropdown({
         onClick={toggle}
         onKeyDown={onTriggerKeyDown && !isOpen ? onTriggerKeyDown : undefined}
         autoFocus={autoFocus}
+        title={triggerTitle}
+        aria-label={triggerAriaLabel ?? triggerTitle}
       >
         {renderTrigger(isOpen)}
       </button>

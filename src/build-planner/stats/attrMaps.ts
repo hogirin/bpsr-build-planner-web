@@ -640,9 +640,15 @@ export const IMAGINE_BUF_MAIN_STAT_PCT: Partial<Record<number, number>> = {
 // (このアプリの静的ステータスモデルでは表現不可)だが、一部は単純なステータスボーナスとして
 // 表現できる。BuffId(effectType=3の第2要素)ごとに手動で対応付ける。
 export type OrdinaryEffectBonus =
-  { kind: 'flat'; stat: StatId; value: number } | { kind: 'finalPct'; stat: StatId; value: number };
+  | { kind: 'flat'; stat: StatId; value: number }
+  | { kind: 'finalPct'; stat: StatId; value: number }
+  | { kind: 'finalPctAddend'; stat: StatId; value: number };
 
 export const ORDINARY_EFFECT_BONUS: Partial<Record<number, OrdinaryEffectBonus>> = {
+  // イマジンインパクト「連携」: 周囲10mの味方1人につき幸運率+1%(最大3%)。
+  // ゲーム内ではソロ時も自身を1人として数え、最低+1%が常時反映されることを実測確認。
+  // 追加の味方人数は静的プランナーでは判定できないため、ここでは最低保証分のみ反映する。
+  3002020: { kind: 'finalPctAddend', stat: 'luck', value: 100 },
   // 瞬間ブレス: 戦闘中のスタミナ回復+35pt/秒(移動速度+10%は対応するStatIdが無いため対象外)
   3002090: { kind: 'flat', stat: 'staminaRegen', value: 35 },
   // 物理防御力+15%(無条件の固定ノード)

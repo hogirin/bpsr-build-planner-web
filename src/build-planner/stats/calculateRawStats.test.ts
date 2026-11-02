@@ -1063,6 +1063,27 @@ describe('calculateRawStats', () => {
     );
   });
 
+  it('adds the イマジンインパクト "連携" solo minimum directly to the final luck percent', () => {
+    const resonance = calculateRawStats({
+      ...baseInput(),
+      phantomEnabled: true,
+      phantomLevel: 17,
+      phantomTemplateId: 1,
+      phantomNodeSelections: { 1002: 1002 },
+    });
+    const rebuild = calculateRawStats({
+      ...baseInput(),
+      phantomEnabled: true,
+      phantomLevel: 17,
+      phantomTemplateId: 1,
+      phantomNodeSelections: { 1002: 1003 },
+    });
+
+    expect(resonance.finalPctAddend.luck).toBe(100);
+    expect(rebuild.finalPctAddend.luck).toBeUndefined();
+    expect(resonance.rawStats.luck).toBe(rebuild.rawStats.luck);
+  });
+
   it("applies template 8's unique level-6 bond reward (main stat +150) once bondPoints reaches 35", () => {
     // src/data/season-talents.json: template 8 (advancedEffectId=107), level 6 -> buffId
     // 3003730 "現在のメインステータス+150". stormBlade's mainStat is 'agility'.

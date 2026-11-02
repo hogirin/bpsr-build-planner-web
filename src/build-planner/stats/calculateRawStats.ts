@@ -758,8 +758,10 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
             if (!bonus) continue;
             if (bonus.kind === 'flat') {
               addStat(bonus.stat, bonus.value);
-            } else {
+            } else if (bonus.kind === 'finalPct') {
               phantomFinalPct[bonus.stat] = (phantomFinalPct[bonus.stat] ?? 0) + bonus.value;
+            } else {
+              finalPctAddend[bonus.stat] = (finalPctAddend[bonus.stat] ?? 0) + bonus.value;
             }
           }
           continue;

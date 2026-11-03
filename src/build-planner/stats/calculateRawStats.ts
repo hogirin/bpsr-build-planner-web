@@ -1062,8 +1062,6 @@ export function applyFinalStatModifiers(
       if (eff.statId === 'matk') matkPctBonus += selection.value;
     }
   }
-  const atkMult = roundClean(1 + atkPctBonus / PERCENT_BASIS_POINTS);
-  const matkMult = roundClean(1 + matkPctBonus / PERCENT_BASIS_POINTS);
   // バトルイマジン パッシブ + 潜在因子: 最終ステータスへの%ボーナス
   const imagFinalPct: Partial<Record<string, number>> = { ...phantomFinalPct };
   for (let i = 0; i < battleImagines.length; i++) {
@@ -1081,14 +1079,24 @@ export function applyFinalStatModifiers(
     }
   }
   const ipct = (key: string) => roundClean(1 + (imagFinalPct[key] ?? 0) / PERCENT_BASIS_POINTS);
+  // 物理/魔法攻撃力%は、伝説刻印とバトルイマジン/潜在因子の値を加算してから一度だけ
+  // 乗算する。別々に乗算すると両者の交差分まで増えてしまう。
+  // (2026-11-03実測: 魔法攻撃力+14%とビートパフォーマーX4 +9%は1.14*1.09ではなく
+  // 1+(0.14+0.09)=1.23。X4なし6026、あり6501と一致する。)
+  const atkFinalMult = roundClean(
+    1 + (atkPctBonus + (imagFinalPct.atk ?? 0)) / PERCENT_BASIS_POINTS,
+  );
+  const matkFinalMult = roundClean(
+    1 + (matkPctBonus + (imagFinalPct.matk ?? 0)) / PERCENT_BASIS_POINTS,
+  );
 
   const stats: Record<StatId, number> = {
     ...rawStats,
     // maxHpのみ切り捨てではなく四捨五入(2026-08-06不具合報告: build1相当のケースで実測と
     // 四捨五入が一致したため。他のステータス(atk/matk/physicalDef等)は従来通り切り捨て)。
     maxHp: Math.round(roundClean(derived.maxHp * ipct('maxHp'))),
-    atk: truncateInt(roundClean(derived.physicalAtk * atkMult * ipct('atk'))),
-    matk: truncateInt(roundClean(derived.magicalAtk * matkMult * ipct('matk'))),
+    atk: truncateInt(roundClean(derived.physicalAtk * atkFinalMult)),
+    matk: truncateInt(roundClean(derived.magicalAtk * matkFinalMult)),
     physicalDef: truncate2(roundClean(derived.physicalDef * ipct('physicalDef'))),
     magicalDef: derived.magicalDef,
     crit: derived.critPercent + (finalPctAddend.crit ?? 0) / 100,
@@ -1103,8 +1111,8 @@ export function applyFinalStatModifiers(
   // (calculateRawStatsのbreakdownは、この段階のボーナスを一切含んでいないため)。
   const finalMultipliers: Partial<Record<StatId, number>> = {
     maxHp: ipct('maxHp'),
-    atk: roundClean(atkMult * ipct('atk')),
-    matk: roundClean(matkMult * ipct('matk')),
+    atk: atkFinalMult,
+    matk: matkFinalMult,
     physicalDef: ipct('physicalDef'),
     haste: ipct('haste'),
     mastery: ipct('mastery'),

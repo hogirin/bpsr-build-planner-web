@@ -1750,6 +1750,26 @@ describe('applyFinalStatModifiers', () => {
     expect(result.stats.matk).toBe(4832);
   });
 
+  it('adds legendary-affix and phantom-factor matk percentages before multiplying once (2026-11-03 beatPerformer X4 measurement)', () => {
+    const derived = { ...zeroDerivedStats(), magicalAtk: 5286 };
+
+    const result = applyFinalStatModifiers(
+      BASE_STATS,
+      baseBreakdown(),
+      derived,
+      { weapon: { attrId: 11344, value: 1400 } }, // 伝説刻印等 +14%
+      [null, null],
+      [5, 5],
+      { matk: 900 }, // ビートパフォーマーX4 +9%
+      {},
+    );
+
+    // ゲームは 5286*(1+0.14+0.09)=6501.78 を切り捨てる。
+    // 1.14*1.09なら6568となり、実測より67高くなる。
+    expect(result.stats.matk).toBe(6501);
+    expect(result.breakdown.matk.multiplier).toBeCloseTo(1.23);
+  });
+
   it('adds finalPctAddend directly to versatility (220以降蒼海武器の万能+8%等)', () => {
     const derived = zeroDerivedStats();
 

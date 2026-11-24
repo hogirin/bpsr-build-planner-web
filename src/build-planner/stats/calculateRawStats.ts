@@ -46,6 +46,7 @@ import {
   FACTOR_SINGLE_STAT_PCT_BONUS,
   FINAL_PCT_STAT_IDS,
   IMAGINE_BUF_FLAT_STAT,
+  IMAGINE_BUF_MAIN_STAT_PCT,
   IMAGINE_BUF_RATING_PER_RATING,
   IMAGINE_BUF_SPEED,
   IMAGINE_FLAT_STAT,
@@ -73,6 +74,7 @@ import {
   TALENT_ATK_SPEED_FINAL_PCT_ATTR_ID,
   TALENT_ATTR_TO_STAT,
   TALENT_BASE_PCT_TO_STAT,
+  TALENT_CONDITIONAL_FINAL_PCT,
   TALENT_EFFECT_TYPE_CONVERSION_RATE,
   TALENT_EFFECT_TYPE_FLAT_STAT,
   TALENT_EFFECT_TYPE_TYPE1_FINAL_PCT,
@@ -306,6 +308,7 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
   const finalPctAddend: Partial<Record<StatId, number>> = {};
   // アビリティによる「5ステータスのうち最終値最大の1項目」への最終%加算量(例: 二段増幅)。
   let highestStatFinalPctBonus = 0;
+  const conditionalFinalPctBonuses = new Set<number>();
   // アビリティによる攻撃速度への直接加算量(%、例: ディバインアーチャー「迅射」)。
   // atkSpeedPercentはDerivedStats側の値のためderiveStats()に渡す。
   let atkSpeedFinalPctAddend = 0;
@@ -509,6 +512,8 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
         } else if (eff[0] === TALENT_EFFECT_TYPE_TYPE1_FINAL_PCT) {
           // 型によって効果内容が変わるアビリティ(例: ビートパフォーマー「変奏」)。
           // 対応する型(type1)使用時のみ最終%ボーナスとして反映する。
+          const conditionalBonus = TALENT_CONDITIONAL_FINAL_PCT[eff[1]];
+          if (conditionalBonus) conditionalFinalPctBonuses.add(eff[1]);
           const bonus = TALENT_TYPE1_ONLY_FINAL_PCT[eff[1]];
           if (bonus && professionTypeKey === 'type1') {
             phantomFinalPct[bonus.stat] = (phantomFinalPct[bonus.stat] ?? 0) + bonus.value;
@@ -706,6 +711,12 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
     for (const eff of ima?.bufPassiveEffects ?? []) {
       const buffId = eff[0] as number;
       const rankParams = (eff[rank + 1] ?? eff[1]) as number[];
+      const mainStatPctParamIndex = IMAGINE_BUF_MAIN_STAT_PCT[buffId];
+      if (mainStatPctParamIndex != null) {
+        const value = rankParams[mainStatPctParamIndex];
+        if (value != null) addPctBonus(profession.mainStat, value);
+        continue;
+      }
       const bufFlat = IMAGINE_BUF_FLAT_STAT[buffId];
       if (bufFlat != null) {
         const value = rankParams[bufFlat.paramIndex];
@@ -924,6 +935,13 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
     total[profession.mainStat] += statResonanceBonus;
   }
 
+  for (const buffId of conditionalFinalPctBonuses) {
+    const bonus = TALENT_CONDITIONAL_FINAL_PCT[buffId];
+    if (bonus && total[bonus.thresholdStat] >= bonus.threshold) {
+      phantomFinalPct[bonus.stat] = (phantomFinalPct[bonus.stat] ?? 0) + bonus.value;
+    }
+  }
+
   // ファストの俊敏変換込み実数値(hasteReal相当)を、極性因子等によるファスト自身への%ボーナスも
   // 反映した状態で計算する。deriveStats側の従来実装は「%ボーナス適用済みのraw.haste」+
   // 「%ボーナス未適用の俊敏変換分」を単純加算していたため、俊敏変換分だけ%ボーナスが
@@ -1030,8 +1048,6 @@ export function applyFinalStatModifiers(
       if (eff.statId === 'matk') matkPctBonus += selection.value;
     }
   }
-  const atkMult = roundClean(1 + atkPctBonus / PERCENT_BASIS_POINTS);
-  const matkMult = roundClean(1 + matkPctBonus / PERCENT_BASIS_POINTS);
   // バトルイマジン パッシブ + 潜在因子: 最終ステータスへの%ボーナス
   const imagFinalPct: Partial<Record<string, number>> = { ...phantomFinalPct };
   for (let i = 0; i < battleImagines.length; i++) {
@@ -1049,14 +1065,22 @@ export function applyFinalStatModifiers(
     }
   }
   const ipct = (key: string) => roundClean(1 + (imagFinalPct[key] ?? 0) / PERCENT_BASIS_POINTS);
+  // 物理/魔法攻撃力%は、伝説刻印とバトルイマジン/因子の値を加算してから一度だけ乗算する。
+  // 別々に乗算すると両者の交差分まで増えてしまう。
+  const atkFinalMult = roundClean(
+    1 + (atkPctBonus + (imagFinalPct.atk ?? 0)) / PERCENT_BASIS_POINTS,
+  );
+  const matkFinalMult = roundClean(
+    1 + (matkPctBonus + (imagFinalPct.matk ?? 0)) / PERCENT_BASIS_POINTS,
+  );
 
   const stats: Record<StatId, number> = {
     ...rawStats,
     // maxHpのみ切り捨てではなく四捨五入(2026-08-06不具合報告: build1相当のケースで実測と
     // 四捨五入が一致したため。他のステータス(atk/matk/physicalDef等)は従来通り切り捨て)。
     maxHp: Math.round(roundClean(derived.maxHp * ipct('maxHp'))),
-    atk: truncateInt(roundClean(derived.physicalAtk * atkMult * ipct('atk'))),
-    matk: truncateInt(roundClean(derived.magicalAtk * matkMult * ipct('matk'))),
+    atk: truncateInt(roundClean(derived.physicalAtk * atkFinalMult)),
+    matk: truncateInt(roundClean(derived.magicalAtk * matkFinalMult)),
     physicalDef: truncate2(roundClean(derived.physicalDef * ipct('physicalDef'))),
     magicalDef: derived.magicalDef,
     crit: derived.critPercent + (finalPctAddend.crit ?? 0) / 100,
@@ -1072,8 +1096,8 @@ export function applyFinalStatModifiers(
   // (calculateRawStatsのbreakdownは、この段階のボーナスを一切含んでいないため)。
   const finalMultipliers: Partial<Record<StatId, number>> = {
     maxHp: ipct('maxHp'),
-    atk: roundClean(atkMult * ipct('atk')),
-    matk: roundClean(matkMult * ipct('matk')),
+    atk: atkFinalMult,
+    matk: matkFinalMult,
     physicalDef: ipct('physicalDef'),
     haste: ipct('haste'),
     mastery: ipct('mastery'),

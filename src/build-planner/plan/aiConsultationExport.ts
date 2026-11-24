@@ -18,6 +18,7 @@ import {
   modulesData,
 } from '../module/moduleData';
 import { factorBaseName, getFactorEffectDesc } from '../phantom/phantomView';
+import { affixEffectText } from '../phantom/phantomAffixData';
 import {
   getActivePhantomNodeIds,
   getUnlockLevel,
@@ -367,13 +368,26 @@ function buildAiExportSnapshot(
             grade: factor.grade,
             itemId: pfData.byClass[factor.classKey]?.grades[factor.grade - 1]?.id ?? null,
             effect: getFactorEffectDesc(tGame, factor.classKey, factor.grade),
+            affixes: (factor.affixes ?? []).flatMap((affix, index) =>
+              affix == null
+                ? []
+                : [
+                    {
+                      slot: index + 1,
+                      group: affix.group,
+                      quality: affix.quality,
+                      value: affix.value,
+                      effect: affixEffectText(tGame, affix),
+                    },
+                  ],
+            ),
           },
         ],
   );
 
   const result = {
     schema: 'bpsr-build-planner-ai-export',
-    schemaVersion: 2,
+    schemaVersion: 3,
     profile: 'debug' as const,
     plannerVersion: __APP_VERSION__,
     shareUrl,
@@ -472,7 +486,6 @@ function buildAiExportSnapshot(
           : tGame(`seasonTalents.templates.${state.phantomTemplateId}`, {
               defaultValue: String(state.phantomTemplateId),
             }),
-      bondPoints: state.phantomBondPoints,
       selectedNodeIds: Object.values(state.phantomNodeSelections),
       activeNodes: activePhantomNodeIds.map((nodeId) => {
         const node = stData.treeNodes[String(nodeId)];
@@ -586,11 +599,15 @@ function buildCompactExport(snapshot: AiExportSnapshot) {
       enabled: snapshot.phantomProjection.enabled,
       level: snapshot.phantomProjection.level,
       templateName: snapshot.phantomProjection.templateName,
-      bondPoints: snapshot.phantomProjection.bondPoints,
       factors: snapshot.phantomProjection.factors.map((factor) => ({
         name: factor.name,
         grade: factor.grade,
         effect: factor.effect,
+        affixes: factor.affixes.map(({ quality, value, effect }) => ({
+          quality,
+          value,
+          effect,
+        })),
       })),
     },
   };

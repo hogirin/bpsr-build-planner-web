@@ -365,6 +365,57 @@ describe('calculateRawStats', () => {
     expect(result.rawStats.strength).toBe(17);
   });
 
+  it('applies Shield Fighter HP Boost only when final strength reaches 500', () => {
+    const talentNodesById = new Map([
+      [
+        1,
+        {
+          id: 1,
+          talentId: 1233,
+          stage: 0,
+          bdType: 0,
+          preNodes: [],
+          nextNodes: [],
+          position: [0, 0] as [number, number],
+        },
+      ],
+    ]);
+    const withStrength = (strength: number) =>
+      calculateRawStats({
+        ...baseInput(),
+        profession: PROFESSIONS.shieldFighter,
+        talentR1EnabledIds: new Set([1]),
+        talentNodesById,
+        equipped: {
+          weapon: makeEquipmentItem({
+            slot: 'weapon',
+            part: 200,
+            baseStats: [[11012, strength, strength, 0, 0]],
+          }),
+        },
+      });
+
+    expect(withStrength(484).phantomFinalPct.maxHp).toBeUndefined();
+    expect(withStrength(485).phantomFinalPct.maxHp).toBe(1200);
+  });
+
+  it('applies the adaptive main-stat percent from battle imagine buff 3200038', () => {
+    const withoutImagine = calculateRawStats({
+      ...baseInput(),
+      profession: PROFESSIONS.beatPerformer,
+    });
+    const withImagine = calculateRawStats({
+      ...baseInput(),
+      profession: PROFESSIONS.beatPerformer,
+      battleImagines: [3971, null],
+      imagineRanks: [5, 5],
+    });
+
+    expect(withImagine.rawStats.intellect).toBe(
+      Math.floor(withoutImagine.rawStats.intellect * 1.15),
+    );
+  });
+
   it('adds statResonanceBonus to the main stat AFTER the % bonus multiplier, not before', () => {
     // stormBlade.mainStat === 'agility'. attrId 11034 (敏捷%) は IMAGINE_PCT_BASE 経由で
     // addPctBonus される。統計共鳴(響奏)のボーナスはこの%乗算の対象に含めない。
@@ -1812,6 +1863,25 @@ describe('applyFinalStatModifiers', () => {
     );
 
     expect(result.stats.matk).toBe(4832);
+  });
+
+  it('adds legendary-affix and factor matk percentages before multiplying once', () => {
+    const derived = { ...zeroDerivedStats(), magicalAtk: 5286 };
+
+    const result = applyFinalStatModifiers(
+      BASE_STATS,
+      baseBreakdown(),
+      derived,
+      { weapon: { attrId: 11344, value: 1400 } },
+      [null, null],
+      [5, 5],
+      { matk: 900 },
+      {},
+    );
+
+    // 5286*(1+0.14+0.09)=6501.78。1.14*1.09なら6568となる。
+    expect(result.stats.matk).toBe(6501);
+    expect(result.breakdown.matk.multiplier).toBeCloseTo(1.23);
   });
 
   it('adds finalPctAddend directly to versatility (220以降蒼海武器の万能+8%等)', () => {

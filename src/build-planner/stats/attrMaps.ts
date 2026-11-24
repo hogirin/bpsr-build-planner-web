@@ -97,6 +97,18 @@ export const TALENT_TYPE1_ONLY_FINAL_PCT: Partial<Record<number, TalentType1Only
   2207340: { stat: 'maxHp', value: 2000 },
 };
 
+export interface TalentConditionalFinalPct {
+  thresholdStat: StatId;
+  threshold: number;
+  stat: StatId;
+  value: number;
+}
+
+// シールドファイターR1「HP強化」: 筋力が500以上なら最大HP+12%。
+export const TALENT_CONDITIONAL_FINAL_PCT: Partial<Record<number, TalentConditionalFinalPct>> = {
+  2206340: { thresholdStat: 'strength', threshold: 500, stat: 'maxHp', value: 1200 },
+};
+
 // アビリティ type=1 効果のうち、attrIdが「攻撃速度」の%finalバリアント(単位1/10000)のもの。
 // atkSpeedPercentはStatId(rawStats)ではなくDerivedStats側の値のため、TALENT_ATTR_TO_STAT/
 // IMAGINE_PCT_FINALには乗らず、deriveStats()への直接加算として個別に扱う
@@ -571,6 +583,12 @@ export const IMAGINE_BUF_FLAT_STAT: Partial<Record<number, { stat: StatId; param
   {
     3210180: { stat: 'critDamageBonus', paramIndex: 0 },
   };
+
+// 現在のクラス型に対応するメインステータスへの%ボーナス。
+// 3200038: p1が筋力/知力/敏捷+%、p2が回復量+%。
+export const IMAGINE_BUF_MAIN_STAT_PCT: Partial<Record<number, number>> = {
+  3200038: 0,
+};
 
 // バトルイマジン パッシブ(BuffId参照)のうち、攻撃速度/詠唱速度への無条件の直接加算。
 // 攻撃速度/詠唱速度%はDerivedStats側の値(StatIdに存在しない)のため、IMAGINE_BUF_FLAT_STATでは

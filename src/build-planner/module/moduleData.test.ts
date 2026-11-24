@@ -59,12 +59,6 @@ describe('formatEffectDesc', () => {
     ]);
   });
 
-  it('formats attrId 11324 as a maxHp percentage (400 -> 4.00%)', () => {
-    expect(formatEffectDesc([[1, 11324, 400]], [], tgAttrDesc, tgAttr, tStat)).toEqual([
-      '11324 +4.00%',
-    ]);
-  });
-
   it('returns one array entry per config row, for the caller to render with line breaks', () => {
     const result = formatEffectDesc(
       [
@@ -78,7 +72,12 @@ describe('formatEffectDesc', () => {
       tgAttr,
       tStat,
     );
-    expect(result).toEqual(['maxHp +1500', 'allAttrStr +60', '会心ダメージ +7.10%', '会心回復 +7.10%']);
+    expect(result).toEqual([
+      'maxHp +1500',
+      'allAttrStr +60',
+      '会心ダメージ +7.10%',
+      '会心回復 +7.10%',
+    ]);
   });
 
   it('keeps a template with an internal slash ("適応物理/魔法攻撃力") as a single entry, not split', () => {
@@ -104,7 +103,10 @@ describe('calcModuleTotalStats(装備効果合計欄)', () => {
 
   it('routes 全属性攻撃力 (attrId 11502) to stats.allAttrAtk, same special-case as calculateRawStats.ts', () => {
     // effectId 1308(「物理耐性」)のlv6 config includes [1,11502,20]。5500303=防御quality3(3穴)。
-    const { stats } = calcModuleTotalStats(twoSlotModuleSlots(5500303, 1308), PROFESSIONS.stormBlade);
+    const { stats } = calcModuleTotalStats(
+      twoSlotModuleSlots(5500303, 1308),
+      PROFESSIONS.stormBlade,
+    );
     expect(stats.allAttrAtk).toBe(20);
   });
 

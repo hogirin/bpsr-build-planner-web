@@ -45,7 +45,7 @@ export interface Profession {
   attackType: AttackType;
   // クラス固有の属性(`src/data/classes.json` の `element` フィールド由来。ZTableの
   // ElementalRestraintTable.json のId順=1:火/2:氷/3:雷/4:森/5:風/6:岩/7:光/8:闇と対応)。
-  // 追加バフ効果ダイアログのシロップ/脊椎試薬属性選択の初期値に使用する。
+  // 追加バフ効果ダイアログのキャンドル属性選択の初期値に使用する。
   element: ElementId;
   // メインステータス1ptあたりの攻撃力上昇量(基礎値。R1アビリティ取得時の追加分は含まない)
   atkPerMainStatPoint: number;
@@ -185,9 +185,6 @@ export const PROFESSIONS: Record<ProfessionKey, Profession> = {
     staminaRegenPerSecond: 240,
     talentSchoolIds: [119, 120],
   },
-  // TODO(S3): Attack and speed coefficients are still provisional.
-  // The HP coefficient is verified as 8.5 by both an in-game measurement and the Wiki.
-  // talentSchoolIds are confirmed from ProfessionSystemTable.ShowTalentStage.
   twinStriker: {
     key: 'twinStriker',
     professionId: 3,

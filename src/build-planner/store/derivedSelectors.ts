@@ -22,7 +22,7 @@ import type { CalculateRawStatsInput } from '../stats/calculateRawStats';
 import {
   AGILE_VALUES,
   applyCookingBuff,
-  computeCookingAdjustmentResult,
+  computeCookingAdjustments,
   INSPIRATION_VALUES,
   LIFE_WAVE_VALUES,
   POWER_CORE_EFFECT_IDS,
@@ -96,7 +96,7 @@ export const selectCookingResult = memoize1((cookingBuff: CookingBuffState) =>
 );
 
 // statCorrectionEnabled=falseの際にcomputeCookingAdjustmentsへ渡す空オブジェクト。呼び出し側
-// (computeStatsBundle)で都度{}リテラルを生成すると、selectCookingAdjustmentResult(memoize1)の
+// (computeStatsBundle)で都度{}リテラルを生成すると、selectCookingAdjustments(memoize1)の
 // 引数がObject.is比較で常に不一致になりキャッシュが効かず、以降のselectStatsWithCooking等の
 // 参照も毎回変わって無限再レンダリングを引き起こすため、安定した参照として切り出す。
 const EMPTY_STAT_CORRECTIONS: Partial<Record<StatId, StatCorrectionEntry>> = {};
@@ -106,7 +106,7 @@ export const selectDerivedStats = memoize1((...args: Parameters<typeof deriveSta
 );
 
 // computeCookingAdjustmentsの「二段増幅」判定用の実数値(%変換前)。rawStatsを
-// そのままスプレッドすると毎回新規オブジェクトになりselectCookingAdjustmentResult(memoize1)のキャッシュが
+// そのままスプレッドすると毎回新規オブジェクトになりselectCookingAdjustments(memoize1)のキャッシュが
 // 効かなくなる(EMPTY_STAT_CORRECTIONSと同じ理由)ため、rawStats参照とhasteReal値が両方
 // 前回と同じ場合のみ同一オブジェクトを返すよう1スロットメモ化する。
 const selectHighestOfFiveRawStats = memoize1(
@@ -170,9 +170,8 @@ const selectDerivedStatsWithFinalAdjustments = memoize1(
   },
 );
 
-export const selectCookingAdjustmentResult = memoize1(
-  (...args: Parameters<typeof computeCookingAdjustmentResult>) =>
-    computeCookingAdjustmentResult(...args),
+export const selectCookingAdjustments = memoize1(
+  (...args: Parameters<typeof computeCookingAdjustments>) => computeCookingAdjustments(...args),
 );
 
 // 器用さ→ステータス(クラス×型固有効果)を適用したrawStats。1スロットメモ化しないと
@@ -209,8 +208,6 @@ const selectStatsWithMasteryFinalPctBonus = memoize1(
     professionKey: BuildStore['professionKey'],
     professionTypeKey: BuildStore['professionTypeKey'],
     finalMasteryPercent: number,
-    targetContributionAtk?: number,
-    baseValueAtk?: number,
   ): Record<StatId, number> => {
     const effects = calculateMasteryFinalPctEffects(
       professionKey,
@@ -220,12 +217,7 @@ const selectStatsWithMasteryFinalPctBonus = memoize1(
     if (effects.length === 0) return stats;
     const result = { ...stats };
     for (const { statId, multiplier } of effects) {
-      const contribution = statId === 'atk' ? targetContributionAtk : undefined;
-      const baseValue = statId === 'atk' && baseValueAtk !== undefined ? baseValueAtk : result[statId];
-      result[statId] =
-        contribution === undefined
-          ? baseValue * multiplier
-          : baseValue + contribution * (multiplier - 1);
+      result[statId] = result[statId] * multiplier;
     }
     return result;
   },
@@ -234,7 +226,7 @@ const selectStatsWithMasteryFinalPctBonus = memoize1(
 const selectStatsWithCooking = memoize1(
   (
     finalStats: Record<StatId, number>,
-    cookingAdjustments: ReturnType<typeof computeCookingAdjustmentResult>['adjustments'],
+    cookingAdjustments: ReturnType<typeof computeCookingAdjustments>,
   ) => {
     if (cookingAdjustments.length === 0) return finalStats;
     const result = { ...finalStats };
@@ -249,7 +241,7 @@ const selectStatsWithCooking = memoize1(
 const selectBreakdownWithCooking = memoize1(
   (
     finalBreakdown: ReturnType<typeof applyFinalStatModifiers>['breakdown'],
-    cookingAdjustments: ReturnType<typeof computeCookingAdjustmentResult>['adjustments'],
+    cookingAdjustments: ReturnType<typeof computeCookingAdjustments>,
   ) => {
     if (cookingAdjustments.length === 0) return finalBreakdown;
     const merged = { ...finalBreakdown };
@@ -297,11 +289,15 @@ export interface StatsBundle {
   talentNodesById: Map<number, TalentTreeNode>;
   r1NodeCount: number;
   skillReplacements: Record<number, number>;
+  // 攻撃速度%/詠唱速度%のうち、ファスト%からの変換分ではなく直接加算された分(モジュール
+  // 「集中・攻撃速度/詠唱」・アビリティ・伝説刻印のfinal%バリアント合算 + 攻撃速度のみ
+  // レイドセット効果の条件付き加算(suitAtkSpeedBonus)を含む)。StatsDetailDialogの
+  // バフ効果内訳で「攻撃速度/詠唱速度に何が加算されているか」を可視化するために使う
+  // (2026-09-21不具合報告: モジュールの攻撃速度補正がバフ効果の内訳に一切表示されず、
+  // 加算されていないように見えていた。derivedStats.atkSpeedPercent自体は既に正しく
+  // 合算済みだったが、rawStats側のStatIdを持たないためバフ効果テーブルには一切出てこなかった)。
   atkSpeedDirectBonusPercent: number;
   castSpeedDirectBonusPercent: number;
-  highestRawConditionalTarget: StatId | null;
-  lifeWaveTarget: StatId | null;
-  lifeWaveCandidateTarget: StatId;
 }
 
 // state から stats/abilityScore 等の全派生値をまとめて計算する。各段は memoize1 済みの
@@ -339,7 +335,6 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     phantomEnabled: state.phantomEnabled,
     phantomLevel: state.phantomLevel,
     phantomTemplateId: state.phantomTemplateId,
-    phantomBondPoints: state.phantomBondPoints,
     phantomNodeSelections: state.phantomNodeSelections,
     phantomFactorSlots: state.phantomFactorSlots,
     cookingBuff: state.cookingBuff,
@@ -378,7 +373,7 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     state.moduleSlots,
   );
 
-  const cookingAdjustmentResult = selectCookingAdjustmentResult(
+  const cookingAdjustments = selectCookingAdjustments(
     finalStatsResult.stats,
     cookingAtkStatId,
     cookingResult.atkBonus,
@@ -390,8 +385,8 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     state.cookingBuff.statCorrectionEnabled
       ? state.cookingBuff.statCorrections
       : EMPTY_STAT_CORRECTIONS,
+    cookingResult.damageBonus,
   );
-  const cookingAdjustments = cookingAdjustmentResult.adjustments;
 
   const stats = selectStatsWithCooking(finalStatsResult.stats, cookingAdjustments);
   const rawStatsBreakdown = selectBreakdownWithCooking(
@@ -452,8 +447,6 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     state.professionKey,
     state.professionTypeKey,
     stats.mastery,
-    derivedStats.physicalAtkMainStatBonus * finalStatsResult.breakdown.atk.multiplier,
-    derivedStats.physicalAtk * finalStatsResult.breakdown.atk.multiplier,
   );
 
   const abilityScore = selectAbilityScore({
@@ -485,7 +478,6 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     phantomTemplateId: state.phantomTemplateId,
     phantomNodeSelections: state.phantomNodeSelections,
     phantomFactorSlots: state.phantomFactorSlots,
-    phantomBondPoints: state.phantomBondPoints,
   });
 
   return {
@@ -500,8 +492,5 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     skillReplacements,
     atkSpeedDirectBonusPercent: rawStatsResult.atkSpeedFinalPctAddend + suitAtkSpeedBonus,
     castSpeedDirectBonusPercent: rawStatsResult.castSpeedFinalPctAddend,
-    highestRawConditionalTarget: cookingAdjustmentResult.highestRawTarget,
-    lifeWaveTarget: cookingAdjustmentResult.lifeWaveTarget,
-    lifeWaveCandidateTarget: cookingAdjustmentResult.lifeWaveCandidateTarget,
   };
 }

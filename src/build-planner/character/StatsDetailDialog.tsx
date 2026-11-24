@@ -11,6 +11,7 @@ import {
   ELEMENT_ATK_STAT,
   ELEMENT_ATTR_STR_STAT,
   ELEMENT_BONUS_STAT,
+  OATH_STAT_ATTR_ID,
   RAW_PERCENT_STAT_IDS,
 } from '../stats/attrMaps';
 import { diminishingPercent } from '../stats/formulas';
@@ -139,6 +140,7 @@ function Section({
 
 export default function StatsDetailDialog({ onClose, windowed = false }: StatsDetailDialogProps) {
   const { t } = useTranslation();
+  const { t: tGame } = useTranslation('game-data');
 
   const {
     rawStats,
@@ -183,6 +185,16 @@ export default function StatsDetailDialog({ onClose, windowed = false }: StatsDe
   };
 
   const te = (key: string) => t(`buildPlanner.detailStats.${key}`);
+  // ステータス名。シーズン固有の「祈り」系はシーズンごとに名称が変わるため、game-data の
+  // 属性名(FightAttrTable の公式名)を使う。祈りダメージは「〇〇アップ」の形で表示する。
+  const statLabel = (statId: StatId): string => {
+    const attrId = OATH_STAT_ATTR_ID[statId];
+    if (attrId === undefined) return t(`buildPlanner.stats.${statId}`);
+    const name = tGame(`attributes.${attrId}`);
+    return statId === 'oathDamageBonus'
+      ? t('buildPlanner.detailStats.stat.seasonDamageBonus', { name })
+      : name;
+  };
   const elemName = (elem: string, suffix: string) =>
     `${te(`elem.${elem}`)}${te(`elemSuffix.${suffix}`)}`;
 
@@ -233,7 +245,7 @@ export default function StatsDetailDialog({ onClose, windowed = false }: StatsDe
 
   // 属性強度→属性ボーナス%(系列C、物理/魔法増強と同じ収益逓減カーブ)。全属性強度も
   // 特定の属性には効果を発揮せず「全属性」枠のみに乗るため、個別属性の行はその属性固有の
-  // 強度(シロップ/脊椎試薬等でcalculateRawStats側でaddStat済みのfireAttrStr等)のみ。
+  // 強度(キャンドル等でcalculateRawStats側でaddStat済みのfireAttrStr等)のみ。
   const elemBonusPercent = (str: number): number =>
     diminishingPercent(str, SEASON_CONSTANTS.diminishingEnhance);
 
@@ -301,7 +313,7 @@ export default function StatsDetailDialog({ onClose, windowed = false }: StatsDe
   const totalFor = (statId: StatId): string => {
     const pct = DERIVED_PERCENT_STAT[statId];
     if (pct !== undefined) return fmtPct(pct);
-    if (RAW_PERCENT_STAT_IDS.has(statId)) return fmtPct(rawStats[statId] / 100);
+    if (RAW_PERCENT_STAT_IDS.has(statId)) return fmtPct(stats[statId] / 100);
     const override = FINAL_RAW_STAT_OVERRIDE[statId];
     return fmtDec2(override !== undefined ? override : rawStats[statId]);
   };
@@ -354,7 +366,7 @@ export default function StatsDetailDialog({ onClose, windowed = false }: StatsDe
           !CUSTOM_LABEL_STAT_IDS.has(statId) &&
           hasBuffContribution(statId),
       )
-      .map((statId) => buildRow(statId, t(`buildPlanner.stats.${statId}`)));
+      .map((statId) => buildRow(statId, statLabel(statId)));
 
   // シーズン強度(S3では「滅妄強度」)は他の全ステータスより上、表の先頭に表示する。
   const illusionPowerRow = hasBuffContribution('illusionPower')
@@ -454,10 +466,23 @@ export default function StatsDetailDialog({ onClose, windowed = false }: StatsDe
     elemStrengthRow('allAttrStr', undefined, elemName('all', 'strBonus')),
     ...ELEMENTS.slice(1).map((elem) => {
       const e = elem as ElementId;
-      return elemStrengthRow(ELEMENT_ATTR_STR_STAT[e], ELEMENT_BONUS_STAT[e], elemName(e, 'strBonus'));
+      return elemStrengthRow(
+        ELEMENT_ATTR_STR_STAT[e],
+        ELEMENT_BONUS_STAT[e],
+        elemName(e, 'strBonus'),
+      );
     }),
   ].filter((row): row is BuffRow => row !== null);
 
+  // 攻撃速度/詠唱速度: rawStats側のStatId(内訳)を持たない派生値のため、他の行のように
+  // buildRow(rawStatsBreakdown)経由では組み立てられない。ファスト%からの変換分(初期値)と、
+  // モジュール「集中・攻撃速度/詠唱」・アビリティ・伝説刻印のfinal%バリアント・レイドセット
+  // 効果由来の直接加算分(atkSpeedDirectBonusPercent/castSpeedDirectBonusPercent、
+  // useBuildStore側で合算済み)を手動で組み立てる(2026-09-21不具合報告: モジュールの攻撃速度
+  // 補正がバフ効果の内訳に一切表示されず、加算されていないように見えていた。合計値自体は
+  // 既に正しく合算されていたが、可視化する行が存在しなかった)。直接加算分が0の場合、
+  // ファスト依存分のみでバフ効果とは言えないため非表示にする(他の行のhasBuffContributionと
+  // 同じ考え方)。
   const speedBuffRow = (
     statId: string,
     label: string,
@@ -525,14 +550,12 @@ export default function StatsDetailDialog({ onClose, windowed = false }: StatsDe
       label: te('stat.luckyHitDamage'),
       value: fmtPct(derivedStats.luckyHitDamageMultiplierPercent),
     },
-    ...(derivedStats.physicalDefIgnorePercent > 0
-      ? [
-          {
-            label: te('stat.physicalDefIgnore'),
-            value: fmtPct(derivedStats.physicalDefIgnorePercent),
-          },
-        ]
-      : []),
+    // ダメージアップ系の枠(加算元が無くても常に表示する)。汎用ダメージアップは現時点では
+    // 料理の精鋭ダメージのみ、祈り系は映痕等のシーズン固有要素から加算される。
+    { label: statLabel('damageBonus'), value: fmtPct(stats.damageBonus / 100) },
+    { label: statLabel('oathDamageBonus'), value: fmtPct(stats.oathDamageBonus / 100) },
+    { label: te('stat.physicalDefIgnore'), value: fmtPct(derivedStats.physicalDefIgnorePercent) },
+    { label: statLabel('oathDefIgnore'), value: fmtDec2(stats.oathDefIgnore) },
     ...(rawStats.bossDamageBonus > 0
       ? [{ label: te('stat.bossDamageBonus'), value: fmtPct(rawStats.bossDamageBonus / 100) }]
       : []),
@@ -561,6 +584,7 @@ export default function StatsDetailDialog({ onClose, windowed = false }: StatsDe
           },
         ]
       : []),
+    { label: statLabel('oathDamageReduction'), value: fmtPct(stats.oathDamageReduction / 100) },
   ];
 
   const supportRows = [

@@ -1,6 +1,172 @@
 {
   "entries": [
     {
+      "version": "0.13.0",
+      "date": "2026-11-23T16:53:24.647Z",
+      "summary": {
+        "ja": "シーズン4(光跡の祈願)への対応",
+        "en": "Add support for Season 4"
+      },
+      "changes": {
+        "ja": [
+          "潜在心相晶を祈願心相晶に置き換え(ツリーをゲーム内と同じ配置で表示、絆ポイント・絆レベル効果の廃止)",
+          "因子の設定をダイアログ形式に変更し、グレード(G1〜G3)と映痕の設定に対応",
+          "映痕のステータス系の効果のステータス・効果一覧・能力スコアへの反映(クラス映痕は計算対象外、重複不可の映痕は全因子で最大値1つのみ反映)",
+          "滅妄強度から祈り強度への名称変更と、ステータス詳細への祈りダメージアップ・祈り防御力無視・祈りダメージ軽減・汎用ダメージアップの追加",
+          "シーズン4の装備(GS320〜380台)・セット効果・暁光武器・バトルイマジンの追加と、イマジンの絞り込みへのS4の追加",
+          "シーズン4の刻印の追加と、刻印候補のシーズン順(S4→S3→S2)の並び替え",
+          "シーズン4の係数・ステータス変換率・料理/キャンドル/泥灸の既定値・鼓舞の基礎値の更新",
+          "装備のGS帯絞り込みと祈願Lvの初期値の、シーズン4の日程への追従",
+          "前シーズンに保存したプランを読み込んだ際の、心相投影の設定の初期化と通知",
+          "S2/S3の一部セット効果で、2セット効果と4セット効果が入れ替わっていた不具合の修正",
+          "ツインストライカーの耐久力1ptあたりの最大HP上昇量の誤り(6→8.5)の修正",
+          "イマジン選択ダイアログの、ランクと絞り込みの縦並びへの変更"
+        ],
+        "en": [
+          "Replace latent crystals with oath crystals (tree laid out as in game; bond points and bond level effects removed)",
+          "Move factor settings into a dialog with grade (G1–G3) and affix settings",
+          "Apply stat affixes to stats, the effect summary and the ability score (class affixes are not calculated; non-stacking affixes apply only once, using the highest value across all factors)",
+          "Rename illusion power to oath power and add oath damage bonus, oath defense ignore, oath damage reduction and general damage bonus to the stats detail",
+          "Add Season 4 equipment (GS320–380), set effects, dawnlight weapons and battle imagines, and an S4 option to the imagine filter",
+          "Add Season 4 seals and sort seal candidates by season (S4 → S3 → S2)",
+          "Update Season 4 coefficients, stat conversion rates, cooking/candle/mud moxa defaults and the base value of inspire",
+          "Follow the Season 4 schedule for the default equipment GS filter and default oath level",
+          "Reset phantom projection settings, with a notice, when loading plans saved in a previous season",
+          "Fix 2-set and 4-set effects being swapped for some S2/S3 sets",
+          "Fix the Twin Striker's max HP gained per endurance point (6 → 8.5)",
+          "Stack the rank selector above the filters in the imagine selection dialog"
+        ]
+      }
+    },
+    {
+      "version": "0.12.5",
+      "date": "2026-09-25T09:45:28.482Z",
+      "summary": {
+        "ja": "キャラクターパネルまわりのレイアウト調整",
+        "en": "Adjust character panel layout"
+      },
+      "changes": {
+        "ja": [
+          "キャラクターパネルのヘッダー余白を、パネル内の縦スクロールバー表示有無に応じて自動調整",
+          "スマホ表示時、画面下部を専有していたフッターをキャラクターパネル最下部に統合(バージョン・プライバシーポリシー・コピーライト・免責事項を縦に集約して表示)"
+        ],
+        "en": [
+          "Auto-adjust the character panel header's right padding based on whether its vertical scrollbar is visible",
+          "On phone-sized screens, move the footer (version, privacy policy link, copyright, disclaimer) into the bottom of the character panel instead of showing it full-width"
+        ]
+      }
+    },
+    {
+      "version": "0.12.4",
+      "date": "2026-09-24T18:39:23.446Z",
+      "summary": {
+        "ja": "レイアウト崩れ・操作不能箇所の修正",
+        "en": "Fix layout glitches and unreachable controls"
+      },
+      "changes": {
+        "ja": [
+          "潜在パネルでノード効果を表示すると、本来パネル内で完結すべきスクロールがページ全体のスクロールに漏れ出し、絆ポイント・ノード効果の固定表示も崩れる不具合の修正",
+          "モジュール選択パネルの合計ステータス欄が内容量に応じてスクロールできず、一部が見えなくなる不具合の修正",
+          "モジュールスロットに効果を3つ設定した際のアイコンとの高さ不一致、および横スクロールバーが常に表示される不具合の修正",
+          "キャラクターパネルをスクロールすると折りたたみ/展開ボタンが画面外に出て押せなくなる不具合の修正",
+          "潜在パネル・キャラクターパネルの折りたたみ/展開ボタンが隣接するラベル(合計絆ポイント、プラン名入力欄)に重なって隠れる不具合の修正",
+          "スマホ横画面で確保する上部余白のさらなる拡大"
+        ],
+        "en": [
+          "Fix node effect content in the phantom panel leaking into a page-level scroll instead of staying confined within the panel, breaking the fixed bond-points/node-effect display",
+          "Fix the module panel's total stats column not scrolling when its content overflows",
+          "Fix module slots with 3 power core effects showing a height mismatch against the icon, and a horizontal scrollbar always appearing in the module panel",
+          "Fix the character panel's collapse toggle scrolling off-screen and becoming unreachable",
+          "Fix the phantom panel's and character panel's collapse toggles overlapping and hiding adjacent labels (bond points total, plan name input)",
+          "Widen the reserved top padding on smartphone landscape screens further"
+        ]
+      }
+    },
+    {
+      "version": "0.12.3",
+      "date": "2026-09-24T16:55:55.765Z",
+      "summary": {
+        "ja": "スマートフォン表示のさらなる改善",
+        "en": "Further improve smartphone display"
+      },
+      "changes": {
+        "ja": [
+          "スマホ横画面でアドレスバーが自動的に隠れる位置までスクロールすると、上部の操作要素に手が届きにくくなっていた問題を解消(上部余白の確保、画面回転時の自動スクロールで余白を飛ばす対応)",
+          "モジュール選択・ステータス詳細・追加バフ効果・クラス選択・インポート・エクスポート・シェアの各ダイアログを、スマートフォンでは全画面表示に変更"
+        ],
+        "en": [
+          "Fix top controls being hard to reach on smartphone landscape screens once scrolled past the auto-hiding address bar (reserve top padding, auto-scroll past it on rotation)",
+          "Make the module, stats detail, buff effect, profession picker, import/export, and share dialogs fullscreen on smartphones"
+        ]
+      }
+    },
+    {
+      "version": "0.12.2",
+      "date": "2026-09-24T13:40:57.978Z",
+      "summary": {
+        "ja": "スマートフォン横画面での表示判定の不具合修正",
+        "en": "Fix smartphone landscape screen detection"
+      },
+      "changes": {
+        "ja": [
+          "画面幅の広いスマートフォン(Pixel 6 Pro等)を横向きで閲覧した際、スマートフォン向けの表示・操作性の調整(PC版推奨案内、パネルの折りたたみ、装備選択画面の全画面表示など)が正しく適用されていなかった不具合の修正",
+          "バージョン情報・プライバシーポリシーのダイアログを、スマートフォンでは全画面表示に変更"
+        ],
+        "en": [
+          "Fix smartphone-specific display and usability adjustments (PC-site notice, collapsible panels, fullscreen equipment picker, etc.) not applying when wider-screen phones (e.g. Pixel 6 Pro) are held in landscape orientation",
+          "Make the About and privacy policy dialogs fullscreen on smartphones"
+        ]
+      }
+    },
+    {
+      "version": "0.12.1",
+      "date": "2026-09-24T11:44:43.218Z",
+      "summary": {
+        "ja": "スマホの横画面でフッターが常時表示され続け、画面を圧迫していた不具合の修正",
+        "en": "Fix the footer staying pinned on smartphone landscape screens and cramping the layout"
+      },
+      "changes": {
+        "ja": [],
+        "en": []
+      }
+    },
+    {
+      "version": "0.12.0",
+      "date": "2026-09-24T11:18:40.405Z",
+      "summary": {
+        "ja": "スマートフォン表示への対応",
+        "en": "Improve smartphone support"
+      },
+      "changes": {
+        "ja": [
+          "スマートフォン幅での閲覧時、PC版サイトでの利用を推奨する案内の表示(横向き表示の提案を含む)",
+          "スマートフォン幅でのキャラクターパネル・心相投影詳細欄の開閉、装備・モジュールタブの横スクロール対応など、操作性の改善",
+          "装備選択ダイアログのスマートフォン向けレイアウトの最適化",
+          "画面下部や端に近い位置でドロップダウンやツールチップを開いた際、画面外にはみ出て操作・確認できなくなる不具合の修正",
+          "心相投影のノードを選択した際、詳細欄が画面外までスクロールされてしまうことがある不具合の修正"
+        ],
+        "en": [
+          "Add a notice recommending the PC site when viewing on a smartphone, including a suggestion to rotate to landscape",
+          "Improve usability at smartphone widths: collapsible character panel and phantom detail pane, horizontal scrolling for equipment/module tabs",
+          "Optimize the equipment picker dialog layout for smartphone screens",
+          "Fix dropdowns and tooltips overflowing off-screen when opened near the bottom or edge of the screen",
+          "Fix the phantom detail pane sometimes scrolling past the selected node, off-screen"
+        ]
+      }
+    },
+    {
+      "version": "0.11.4",
+      "date": "2026-09-21T07:38:02.971Z",
+      "summary": {
+        "ja": "ステータス詳細のバフ効果内訳に攻撃速度・詠唱速度の項目が表示されない不具合の修正",
+        "en": "Fix attack/cast speed bonuses not appearing in the Stats Detail buff-effect breakdown"
+      },
+      "changes": {
+        "ja": [],
+        "en": []
+      }
+    },
+    {
       "version": "0.11.3",
       "date": "2026-09-15T17:05:45.239Z",
       "summary": {

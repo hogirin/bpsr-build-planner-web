@@ -49,7 +49,7 @@ import {
   getQualityColor,
   getSuitInfo,
   isCandidateGsMatch,
-  isSeason3EnchantItem,
+  compareEnchantItems,
   REFINE_LEVEL_MILESTONES,
   resolveEnchantGradeView,
   resolveEnchantSelection,
@@ -220,12 +220,12 @@ function EquipmentSlotPicker({
       )
     : { total: 0, baseStats: 0, evolution: 0, enchant: 0, refine: 0 };
 
-  // プレビューボックス用アイコン URL
+  // プレビューボックス用アイコン URL。サフィックスなしの画像を優先する(武器の _t 付き・
+  // 防具/アクセサリの _l 付きは装備パネル用)。無い場合のみサフィックス付きにフォールバック。
   const bgUrl = getEquipBgUrlFrom(equippedItem);
   const iconUrl = equippedItem
-    ? slot === 'weapon'
-      ? (getPickerEquipUrl(equippedItem.icon + '_t') ?? getPickerEquipUrl(equippedItem.icon))
-      : (getPickerEquipUrl(equippedItem.icon + '_l') ?? getPickerEquipUrl(equippedItem.icon))
+    ? (getPickerEquipUrl(equippedItem.icon) ??
+      getPickerEquipUrl(equippedItem.icon + (slot === 'weapon' ? '_t' : '_l')))
     : undefined;
 
   // 装着効果データ (enchantId がある場合のみ)
@@ -261,13 +261,7 @@ function EquipmentSlotPicker({
   const enchantsList = (
     equippedItem?.enchantId ? (enchantsData[String(equippedItem.enchantId)] ?? []) : []
   ).filter((e) => !/^[FT]-/.test(t(`items.${e.id}.name`, { ns: 'game-data' })));
-  // シーズン降順(S3→S2) → レア度降順 → レベル降順 → ID降順。
-  const sortedEnchants = [...enchantsList].sort((a, b) => {
-    const seasonDiff = Number(isSeason3EnchantItem(b)) - Number(isSeason3EnchantItem(a));
-    if (seasonDiff !== 0) return seasonDiff;
-    if (b.quality !== a.quality) return b.quality - a.quality;
-    return (b.level ?? 0) - (a.level ?? 0) || b.id - a.id;
-  });
+  const sortedEnchants = [...enchantsList].sort(compareEnchantItems);
   // selectedEnchant は基本/精/極いずれかのID。base → refined/perfect を逆引き。
   const {
     base: baseEnchantItem,

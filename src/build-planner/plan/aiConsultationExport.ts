@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import {
   classifyEvoDisplay,
   EQUIPMENT_BOTTOM_SLOTS,
@@ -38,12 +39,10 @@ import { computeStatsBundle } from '../store/derivedSelectors';
 import type { BuildStore } from '../store/types';
 import type { EquipmentSlotId, StatId } from '../types';
 
-type Translate = (key: string, options?: Record<string, unknown>) => string;
-
 export interface AiConsultationExportOptions {
   shareUrl: string;
-  t: Translate;
-  tGame: Translate;
+  t: TFunction<'translation'>;
+  tGame: TFunction<'game-data'>;
 }
 
 export type AiExportProfile = 'compact' | 'debug';

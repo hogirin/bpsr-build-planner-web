@@ -23,6 +23,7 @@ import {
   AGILE_VALUES,
   applyCookingBuff,
   computeCookingAdjustments,
+  computeCookingAdjustmentResult,
   INSPIRATION_VALUES,
   LIFE_WAVE_VALUES,
   POWER_CORE_EFFECT_IDS,
@@ -183,8 +184,6 @@ const selectRawStatsWithMasteryBonus = memoize1(
     professionKey: BuildStore['professionKey'],
     professionTypeKey: BuildStore['professionTypeKey'],
     finalMasteryPercent: number,
-    targetContributionAtk?: number,
-    baseValueAtk?: number,
   ): Record<StatId, number> => {
     const effects = calculateMasteryStatEffects(
       professionKey,
@@ -210,6 +209,8 @@ const selectStatsWithMasteryFinalPctBonus = memoize1(
     professionKey: BuildStore['professionKey'],
     professionTypeKey: BuildStore['professionTypeKey'],
     finalMasteryPercent: number,
+    targetContributionAtk?: number,
+    baseValueAtk?: number,
   ): Record<StatId, number> => {
     const effects = calculateMasteryFinalPctEffects(
       professionKey,
@@ -305,6 +306,9 @@ export interface StatsBundle {
   // 合算済みだったが、rawStats側のStatIdを持たないためバフ効果テーブルには一切出てこなかった)。
   atkSpeedDirectBonusPercent: number;
   castSpeedDirectBonusPercent: number;
+  highestRawConditionalTarget: StatId | null;
+  lifeWaveTarget: StatId | null;
+  lifeWaveCandidateTarget: StatId;
 }
 
 // state から stats/abilityScore 等の全派生値をまとめて計算する。各段は memoize1 済みの
@@ -380,7 +384,7 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     state.moduleSlots,
   );
 
-  const cookingAdjustments = selectCookingAdjustments(
+  const cookingArgs: Parameters<typeof computeCookingAdjustmentResult> = [
     finalStatsResult.stats,
     cookingAtkStatId,
     cookingResult.atkBonus,
@@ -393,7 +397,9 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
       ? state.cookingBuff.statCorrections
       : EMPTY_STAT_CORRECTIONS,
     cookingResult.damageBonus,
-  );
+  ];
+  const cookingAdjustments = selectCookingAdjustments(...cookingArgs);
+  const cookingAdjustmentResult = computeCookingAdjustmentResult(...cookingArgs);
 
   const stats = selectStatsWithCooking(finalStatsResult.stats, cookingAdjustments);
   const rawStatsBreakdown = selectBreakdownWithCooking(
@@ -445,8 +451,6 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     state.professionKey,
     state.professionTypeKey,
     stats.mastery,
-    derivedStats.physicalAtkMainStatBonus * finalStatsResult.breakdown.atk.multiplier,
-    derivedStats.physicalAtk * finalStatsResult.breakdown.atk.multiplier,
   );
 
   // 器用さ→実数値ステータス(atk/matk等)への最終値乗算ボーナス(例: ツインストライカー
@@ -456,6 +460,8 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     state.professionKey,
     state.professionTypeKey,
     stats.mastery,
+    derivedStats.physicalAtkMainStatBonus * finalStatsResult.breakdown.atk.multiplier,
+    derivedStats.physicalAtk * finalStatsResult.breakdown.atk.multiplier,
   );
 
   const abilityScore = selectAbilityScore({
@@ -501,5 +507,8 @@ export function computeStatsBundle(state: BuildStore): StatsBundle {
     skillReplacements,
     atkSpeedDirectBonusPercent: rawStatsResult.atkSpeedFinalPctAddend + suitAtkSpeedBonus,
     castSpeedDirectBonusPercent: rawStatsResult.castSpeedFinalPctAddend,
+    highestRawConditionalTarget: cookingAdjustmentResult.highestRawTarget,
+    lifeWaveTarget: cookingAdjustmentResult.lifeWaveTarget,
+    lifeWaveCandidateTarget: cookingAdjustmentResult.lifeWaveCandidateTarget,
   };
 }

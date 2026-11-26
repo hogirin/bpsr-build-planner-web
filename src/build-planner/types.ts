@@ -161,7 +161,15 @@ export interface EquipmentItem {
   enchantId?: number;
   // セットID: EquipTable.SuitId。0または未設定の場合はセットなし。
   suitId?: number;
+  // 「極」(kiwami、ドロップ品)/「匠」(takumi、クラフト品)の種別。どちらでもなければ未設定。
+  // 抽出時に日本語の装備名の接頭辞「[極]」「[匠]」で判定している(extract-ztable.mjs)。
+  variantTag?: EquipmentVariantTag;
+  // 欠番になった装備(日本語名に「【廃棄】」を含む。入手経路のデータが無い)。候補一覧には出さないが、
+  // 保存済みプランで選ばれていた場合に読み込めるよう、データ自体は残している。
+  discarded?: boolean;
 }
+
+export type EquipmentVariantTag = 'kiwami' | 'takumi';
 
 export interface LegendaryAffixEntry {
   effectType: number;
@@ -280,8 +288,14 @@ export interface StatCorrectionEntry {
   finalValue: number;
 }
 
-// ステータス補正(仮)の各入力値の許容範囲(絶対値)。
+// ステータス補正(仮)の乗算(multPercent)/最終値補正(finalValue)入力の許容範囲(絶対値)。
 export const STAT_CORRECTION_LIMIT = 50000;
+
+// ステータス補正(仮)の加算(add)入力の許容範囲(絶対値)の既定値。シーズン係数が分かっている
+// %系ステータスは係数側の値を使う(getStatCorrectionAddLimit参照)。
+export const STAT_CORRECTION_ADD_LIMIT = 200000;
+// 最大HPの加算(add)入力の許容範囲(絶対値)。
+export const STAT_CORRECTION_ADD_LIMIT_MAX_HP = 1000000;
 
 // モジュールホール: 1 ホールの設定。linkCount=1-10 はリンクスタック数。
 export interface ModuleHole {

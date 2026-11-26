@@ -1454,8 +1454,9 @@ describe('calculateRawStats', () => {
 
     // イマジン「幻花の残骸」(id 3990)/「蝕花の残影」(id 3991)のbufPassiveEffects:
     // [[3210270/3210280, [10000,40,600],[10000,52,780],...]]。「ファスト/器用さ{p1}ptにつき
-    // 追加で+{p2}、最大{p3}」。実数値確定後の値から加算量を求める。
-    describe('「N ptにつき追加で+M(最大X)」型(幻花の残骸/蝕花の残影)', () => {
+    // 追加で+{p2}、最大{p3}」。実数値確定後の値から加算量を求め、実数値ではなく最終%への
+    // 直接加算(finalPctAddend、100 = 1%)として返す。
+    describe('「N ptにつき追加で+M%(最大X%)」型(幻花の残骸/蝕花の残影)', () => {
       const withCorrections = (
         corrections: Partial<
           Record<StatId, { add: number; multPercent: number; finalValue: number }>
@@ -1469,22 +1470,25 @@ describe('calculateRawStats', () => {
         },
       });
 
-      it('adds +40 haste per 10000 haste (rank0), based on the final haste rating', () => {
+      it('adds +1% haste per 10000 haste (rank5) to finalPctAddend, not to the rating', () => {
         const base = withCorrections({ haste: { add: 35000, multPercent: 0, finalValue: 0 } });
         const without = calculateRawStats(base);
         const withImagine = calculateRawStats({
           ...base,
           battleImagines: [3990, null],
-          imagineRanks: [0, 5],
+          imagineRanks: [5, 5],
         });
 
-        const expected = Math.min(600, Math.floor(without.hasteRealAdjusted / 10000) * 40);
+        const expected = Math.min(1500, Math.floor(without.hasteRealAdjusted / 10000) * 100);
         expect(expected).toBeGreaterThan(0);
-        expect(withImagine.hasteRealAdjusted).toBe(without.hasteRealAdjusted + expected);
-        expect(withImagine.rawStats.haste).toBe(without.rawStats.haste + expected);
+        expect(withImagine.finalPctAddend.haste ?? 0).toBe(
+          (without.finalPctAddend.haste ?? 0) + expected,
+        );
+        expect(withImagine.hasteRealAdjusted).toBe(without.hasteRealAdjusted);
+        expect(withImagine.rawStats.haste).toBe(without.rawStats.haste);
       });
 
-      it('caps the mastery bonus at p3 (rank0: 600)', () => {
+      it('caps the mastery bonus at p3 (rank0: 600 = +6%)', () => {
         const base = withCorrections({ mastery: { add: 500000, multPercent: 0, finalValue: 0 } });
         const without = calculateRawStats(base);
         const withImagine = calculateRawStats({
@@ -1493,7 +1497,10 @@ describe('calculateRawStats', () => {
           imagineRanks: [0, 5],
         });
 
-        expect(withImagine.rawStats.mastery).toBe(without.rawStats.mastery + 600);
+        expect(withImagine.finalPctAddend.mastery ?? 0).toBe(
+          (without.finalPctAddend.mastery ?? 0) + 600,
+        );
+        expect(withImagine.rawStats.mastery).toBe(without.rawStats.mastery);
       });
 
       it('adds nothing below p1 pt', () => {
@@ -1503,7 +1510,9 @@ describe('calculateRawStats', () => {
           imagineRanks: [5, 5],
         });
 
-        expect(withImagine.rawStats.mastery).toBe(calculateRawStats(baseInput()).rawStats.mastery);
+        expect(withImagine.finalPctAddend.mastery ?? 0).toBe(
+          calculateRawStats(baseInput()).finalPctAddend.mastery ?? 0,
+        );
       });
     });
   });
@@ -1535,6 +1544,15 @@ describe('calculateRawStats', () => {
       expect(leveled.breakdown.illusionPower.additive).toBe(
         zeroLevel.breakdown.illusionPower.additive ?? 0,
       );
+    });
+
+    // SeasonLevelTable(S4): 祈り強度はLv1〜30が+20/Lv、Lv31以降は+10/Lv(耐久力は全帯+100/Lv)。
+    it('applies the per-level illusionPower step change after phantom level 30', () => {
+      const bonus = (phantomLevel: number) =>
+        calculateRawStats({ ...baseInput(), phantomLevel }).breakdown.illusionPower.levelBonus ?? 0;
+      expect(bonus(30)).toBe(600);
+      expect(bonus(31)).toBe(610);
+      expect(bonus(100)).toBe(1300);
     });
   });
 

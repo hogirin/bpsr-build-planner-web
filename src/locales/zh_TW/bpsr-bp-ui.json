@@ -139,14 +139,27 @@
     "equipLevel": "裝備Lv.{{level}}",
     "perfectline": "完成度",
     "refineLevel": "精煉等級",
+    "refineBulk": {
+      "openButton": "精煉等級批量修改",
+      "title": "精煉等級批量修改",
+      "bulkHeading": "批量修改",
+      "all": "全部位",
+      "attack": "攻擊部位",
+      "defense": "防禦部位",
+      "apply": "套用"
+    },
     "emptySlot": "空",
     "unequip": "卸下",
     "selectEquipmentTitle": "選擇{{slot}}",
     "candidateFilter": {
       "toggle": "篩選",
+      "below300": "<Lv300",
       "lv320": "Lv320檔",
       "lv340": "Lv340檔",
-      "lv360": "Lv360檔"
+      "lv360": "Lv360檔",
+      "legendary": "傳說",
+      "kiwami": "極",
+      "takumi": "匠"
     },
     "selectProfessionTitle": "選擇職業",
     "professionLabel": "職業",
@@ -213,6 +226,16 @@
       "confirmSwitchMsg": "將切換到「{{name}}」，目前的變更將遺失。",
       "nameDuplicate": "已存在同名的預設"
     },
+    "affixPreset": {
+      "placeholder": "選擇映痕預設",
+      "save": "保存映痕預設",
+      "saveTitle": "保存映痕預設",
+      "defaultName": "映痕預設 {{n}}",
+      "noPresets": "尚無已保存的映痕預設",
+      "capReachedMsg": "已達到保存上限({{max}}個)。請先刪除不需要的預設後再保存。",
+      "confirmSwitchMsg": "將套用「{{name}}」，目前的因子等級與映痕設定將遺失。",
+      "nameDuplicate": "已存在同名的預設"
+    },
     "baseStats": "基礎屬性",
     "evolutionStats": "進化屬性",
     "rareStats": "稀有屬性",
@@ -222,6 +245,7 @@
     "equippedEffects": "裝著效果",
     "enchantCost": "消耗",
     "enchantAdvancedCost": "高級裝著消耗",
+    "enchantSeason": "賽季{{n}}",
     "enchantGradeBase": "普通",
     "enchantGradeRefined": "精",
     "enchantGradePerfect": "極",
@@ -232,8 +256,11 @@
       "masterySkills": "精通技能",
       "rank": "階級",
       "rankFormat": "{{v}}階",
+      "levelFormat": "Lv{{v}}",
       "selectImagine": "選擇幻想",
       "selectRoleSkill": "選擇職責技能",
+      "roleBasicSkills": "基礎技能",
+      "roleImagines": "職責幻想",
       "equip": "裝載"
     },
     "imagineFilter": {
@@ -408,7 +435,7 @@
       "factorDuplicateMsg": "『{{factor}}』已裝載於『{{slot}}』。是否互換？",
       "factorDuplicateConfirm": "互換",
       "pathUndecided": "（路徑未確定）",
-      "bulkGradeLabel": "因子等級批量調整",
+      "bulkLevelLabel": "因子等級批量調整",
       "enabledOn": "啟用",
       "enabledOff": "禁用",
       "enabledLockedTitle": "所選樹尚未解鎖，無法開啟",
@@ -421,10 +448,12 @@
       "effectSummary": {
         "sections": {
           "total": "摘要",
+          "affix": "映痕效果",
           "intermediate": "中級節點效果",
           "ordinary": "初級節點效果"
         },
         "statEmpty": "沒有發生變化的屬性",
+        "affixEmpty": "沒有鑲嵌的映痕",
         "individualLabel": "單項效果",
         "flatCol": "加算",
         "pctCol": "乘算%",
@@ -433,16 +462,27 @@
       },
       "factorDialogTitle": "因子設定 - {{slot}}",
       "factorSelect": "因子",
-      "factorGrade": "等級",
+      "factorLevel": "因子等級",
+      "factorTypeLabel": "因子類型: {{type}}",
+      "factorClassLabel": "職業: {{class}}",
+      "factorClassUnrestricted": "無限制",
+      "factorSchoolLabel": "所屬類型: {{type}}",
+      "factorSchoolMismatchShort": "類型不符，無效果",
+      "factorSchoolMismatch": "該奇點因子屬於「{{type}}」。與目前角色的類型不同，因此效果不會生效。",
+      "affixLossOnLevelDownMsg": "將因子等級降至G{{level}}後，將移除{{count}}個映痕。是否變更？",
+      "affixLossOnLevelDownConfirm": "變更",
       "factorEffect": "因子效果",
       "affixHeading": "映痕",
+      "affixBulkQuality": "稀有度批量修改",
+      "affixBulkQualityConfirmMsg": "將{{count}}個映痕的稀有度改為「{{quality}}」。修改後的映痕效果值將被重置。是否繼續？",
+      "affixBulkQualityConfirm": "修改",
       "affixNeedFactor": "選擇因子後即可設定映痕。",
       "affixSlot": "槽位{{n}}",
       "affixSlotType": {
         "1": "屬性",
         "2": "職業"
       },
-      "affixLocked": "G{{grade}}開放",
+      "affixLocked": "G{{level}}開放",
       "affixNone": "無",
       "affixValue": "效果值",
       "affixCount": "映痕{{count}}",
@@ -457,6 +497,7 @@
         "105": "屬性·元素",
         "1001": "職業的映痕"
       },
+      "affixLibClass": "職業的映痕({{class}})",
       "affixEffect": "映痕效果",
       "affixNonStackingShort": "不可疊加",
       "affixNonStackingWarning": "該效果不可疊加。其他槽位（包括其他因子）也有相同的映痕，僅生效數值最大的一個。"

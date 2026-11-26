@@ -139,14 +139,27 @@
     "equipLevel": "装備Lv.{{level}}",
     "perfectline": "完成度",
     "refineLevel": "精錬レベル",
+    "refineBulk": {
+      "openButton": "精錬Lv一括変更",
+      "title": "精錬Lv一括変更",
+      "bulkHeading": "一括変更",
+      "all": "全部位",
+      "attack": "攻撃用部位",
+      "defense": "防御用部位",
+      "apply": "反映"
+    },
     "emptySlot": "空き",
     "unequip": "外す",
     "selectEquipmentTitle": "{{slot}}を選択",
     "candidateFilter": {
       "toggle": "絞り込み",
+      "below300": "Lv300未満",
       "lv320": "Lv320台",
       "lv340": "Lv340台",
-      "lv360": "Lv360台"
+      "lv360": "Lv360台",
+      "legendary": "伝説",
+      "kiwami": "極",
+      "takumi": "匠"
     },
     "selectProfessionTitle": "クラス選択",
     "professionLabel": "クラス",
@@ -213,6 +226,16 @@
       "confirmSwitchMsg": "「{{name}}」に切り替えます。現在の変更は失われます。",
       "nameDuplicate": "同名のプリセットが既に存在します"
     },
+    "affixPreset": {
+      "placeholder": "映痕プリセットを選択",
+      "save": "映痕プリセットを保存",
+      "saveTitle": "映痕プリセットを保存",
+      "defaultName": "映痕プリセット {{n}}",
+      "noPresets": "保存された映痕プリセットはありません",
+      "capReachedMsg": "保存上限({{max}}件)に達しています。不要なプリセットを削除してから保存してください。",
+      "confirmSwitchMsg": "「{{name}}」を適用します。現在の因子レベルと映痕の設定は失われます。",
+      "nameDuplicate": "同名のプリセットが既に存在します"
+    },
     "baseStats": "基礎ステータス",
     "evolutionStats": "進化ステータス",
     "rareStats": "レアステータス",
@@ -222,6 +245,7 @@
     "equippedEffects": "装着効果",
     "enchantCost": "コスト",
     "enchantAdvancedCost": "上級装着コスト",
+    "enchantSeason": "シーズン{{n}}",
     "enchantGradeBase": "通常",
     "enchantGradeRefined": "精",
     "enchantGradePerfect": "極",
@@ -232,8 +256,11 @@
       "masterySkills": "マスタリースキル",
       "rank": "ランク",
       "rankFormat": "G{{v}}",
+      "levelFormat": "Lv{{v}}",
       "selectImagine": "イマジン選択",
       "selectRoleSkill": "ロールスキルを選択",
+      "roleBasicSkills": "基本スキル",
+      "roleImagines": "ロールイマジン",
       "equip": "装着"
     },
     "imagineFilter": {
@@ -408,7 +435,7 @@
       "factorDuplicateMsg": "『{{factor}}』は既に『{{slot}}』に装着されています。入れ替えますか？",
       "factorDuplicateConfirm": "入れ替える",
       "pathUndecided": "（パス未確定）",
-      "bulkGradeLabel": "因子ランク一括変更",
+      "bulkLevelLabel": "因子レベル一括変更",
       "enabledOn": "有効",
       "enabledOff": "無効",
       "enabledLockedTitle": "選択中のツリーが未開放のためONにできません",
@@ -421,10 +448,12 @@
       "effectSummary": {
         "sections": {
           "total": "サマリ",
+          "affix": "映痕効果",
           "intermediate": "中級ノード効果",
           "ordinary": "初級ノード効果"
         },
         "statEmpty": "変化のあるステータスはありません",
+        "affixEmpty": "埋め込まれている映痕はありません",
         "individualLabel": "個別効果",
         "flatCol": "加算",
         "pctCol": "乗算%",
@@ -433,16 +462,27 @@
       },
       "factorDialogTitle": "因子の設定 - {{slot}}",
       "factorSelect": "因子",
-      "factorGrade": "グレード",
+      "factorLevel": "因子レベル",
+      "factorTypeLabel": "因子タイプ: {{type}}",
+      "factorClassLabel": "クラス: {{class}}",
+      "factorClassUnrestricted": "無制限",
+      "factorSchoolLabel": "型の所属: {{type}}",
+      "factorSchoolMismatchShort": "型が異なるため効果なし",
+      "factorSchoolMismatch": "この特異点因子は「{{type}}」の因子です。現在のキャラクターの型と異なるため、効果が発動しません。",
+      "affixLossOnLevelDownMsg": "因子レベルをG{{level}}に下げると、映痕が{{count}}個外れます。変更しますか？",
+      "affixLossOnLevelDownConfirm": "変更する",
       "factorEffect": "因子の効果",
       "affixHeading": "映痕",
+      "affixBulkQuality": "レアリティ一括変更",
+      "affixBulkQualityConfirmMsg": "{{count}}個の映痕のレアリティを「{{quality}}」に変更します。変更した映痕の効果値はリセットされます。よろしいですか？",
+      "affixBulkQualityConfirm": "変更する",
       "affixNeedFactor": "因子を選択すると映痕を設定できます。",
       "affixSlot": "スロット{{n}}",
       "affixSlotType": {
         "1": "ステータス",
         "2": "クラス"
       },
-      "affixLocked": "G{{grade}}で開放",
+      "affixLocked": "G{{level}}で開放",
       "affixNone": "なし",
       "affixValue": "効果値",
       "affixCount": "映痕{{count}}",
@@ -457,6 +497,7 @@
         "105": "ステータス・元素",
         "1001": "クラスの映痕"
       },
+      "affixLibClass": "クラスの映痕({{class}})",
       "affixEffect": "映痕の効果",
       "affixNonStackingShort": "重複不可",
       "affixNonStackingWarning": "効果は重複不可です。同じ映痕が他のスロット(他の因子を含む)にもあり、値が最も大きい1つだけが反映されます。"

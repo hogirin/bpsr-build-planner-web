@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import DraggableDialog from '../components/DraggableDialog';
+import SelectDropdown from '../components/SelectDropdown';
 import Stepper from '../components/Stepper';
 import ToggleButtonGroup from '../components/ToggleButtonGroup';
 import ToggleSwitch from '../components/ToggleSwitch';
@@ -12,6 +13,7 @@ import {
   calcStatResonanceBonus,
   DMG_STACK_PER_STACK,
   ELITE_DAMAGE_OPTIONS,
+  getStatCorrectionAddLimit,
   getStatCorrectionTargets,
   INSPIRATION_VALUES,
   LIFE_WAVE_VALUES,
@@ -43,17 +45,15 @@ function toNumberInputProps(value: number, onChange: (v: number) => void) {
   };
 }
 
-// ステータス補正(仮)用の共通ヘルパー: 負数を許可し、±STAT_CORRECTION_LIMITにクランプする。
-function toSignedNumberInputProps(value: number, onChange: (v: number) => void) {
+// ステータス補正(仮)用の共通ヘルパー: 負数を許可し、±limitにクランプする。
+function toSignedNumberInputProps(value: number, limit: number, onChange: (v: number) => void) {
   return {
-    min: -STAT_CORRECTION_LIMIT,
-    max: STAT_CORRECTION_LIMIT,
+    min: -limit,
+    max: limit,
     value: value === 0 ? '' : value,
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
       const parsed = Number(e.target.value);
-      const clamped = Number.isNaN(parsed)
-        ? 0
-        : Math.min(STAT_CORRECTION_LIMIT, Math.max(-STAT_CORRECTION_LIMIT, parsed));
+      const clamped = Number.isNaN(parsed) ? 0 : Math.min(limit, Math.max(-limit, parsed));
       onChange(clamped);
     },
   };
@@ -136,19 +136,17 @@ function BuffEffectDialog({
                 onChange({ cookingAtkValue: v }),
               )}
             />
-            <select
+            <SelectDropdown
               className="buff-effect-dialog__select"
               disabled={!cookingBuff.cookingEnabled}
               title={t('buildPlanner.buffDialog.eliteDamage')}
               value={cookingBuff.cookingEliteDamagePercent}
-              onChange={(e) => onChange({ cookingEliteDamagePercent: Number(e.target.value) })}
-            >
-              {ELITE_DAMAGE_OPTIONS.map((pct) => (
-                <option key={pct} value={pct}>
-                  {pct === 0 ? '0%' : `+${pct}%`}
-                </option>
-              ))}
-            </select>
+              options={ELITE_DAMAGE_OPTIONS.map((pct) => ({
+                value: pct,
+                label: pct === 0 ? '0%' : `+${pct}%`,
+              }))}
+              onChange={(v) => onChange({ cookingEliteDamagePercent: v })}
+            />
           </div>
 
           {/* シロップ/脊椎試薬 */}
@@ -161,20 +159,16 @@ function BuffEffectDialog({
               />
               <span>{t('buildPlanner.buffDialog.syrup')}</span>
             </label>
-            <select
+            <SelectDropdown<CookingBuffState['syrupElement']>
               className="buff-effect-dialog__select buff-effect-dialog__select--narrow"
               disabled={!cookingBuff.syrupEnabled}
               value={cookingBuff.syrupElement}
-              onChange={(e) =>
-                onChange({ syrupElement: e.target.value as CookingBuffState['syrupElement'] })
-              }
-            >
-              {ELEMENT_IDS.map((elem) => (
-                <option key={elem} value={elem}>
-                  {t(`buildPlanner.detailStats.elem.${elem}`)}
-                </option>
-              ))}
-            </select>
+              options={ELEMENT_IDS.map((elem) => ({
+                value: elem,
+                label: t(`buildPlanner.detailStats.elem.${elem}`),
+              }))}
+              onChange={(v) => onChange({ syrupElement: v })}
+            />
             <input
               type="number"
               inputMode="numeric"
@@ -285,21 +279,17 @@ function BuffEffectDialog({
                 )}
               />{' '}
               x
-              <select
+              <SelectDropdown
                 className="buff-effect-dialog__select"
                 disabled={!cookingBuff.statResonanceEnabled}
                 title={t('buildPlanner.buffDialog.statResonanceMultiplier')}
                 value={cookingBuff.statResonanceMultiplierPercent}
-                onChange={(e) =>
-                  onChange({ statResonanceMultiplierPercent: Number(e.target.value) })
-                }
-              >
-                {STAT_RESONANCE_MULTIPLIER_OPTIONS.map((pct) => (
-                  <option key={pct} value={pct}>
-                    {pct}%
-                  </option>
-                ))}
-              </select>
+                options={STAT_RESONANCE_MULTIPLIER_OPTIONS.map((pct) => ({
+                  value: pct,
+                  label: `${pct}%`,
+                }))}
+                onChange={(v) => onChange({ statResonanceMultiplierPercent: v })}
+              />
               <span className="buff-effect-dialog__hint">
                 {t('buildPlanner.buffDialog.statResonanceResult', {
                   stat: mainStatLabel,
@@ -441,7 +431,7 @@ function BuffEffectDialog({
                         ? 'buildPlanner.buffDialog.statCorrectionRawAdd'
                         : 'buildPlanner.buffDialog.statCorrectionAdd',
                     )}
-                    {...toSignedNumberInputProps(entry.add, (v) =>
+                    {...toSignedNumberInputProps(entry.add, getStatCorrectionAddLimit(id), (v) =>
                       updateStatCorrection(id, { add: v }),
                     )}
                   />
@@ -455,7 +445,7 @@ function BuffEffectDialog({
                         ? 'buildPlanner.buffDialog.statCorrectionRawMult'
                         : 'buildPlanner.buffDialog.statCorrectionMult',
                     )}
-                    {...toSignedNumberInputProps(entry.multPercent, (v) =>
+                    {...toSignedNumberInputProps(entry.multPercent, STAT_CORRECTION_LIMIT, (v) =>
                       updateStatCorrection(id, { multPercent: v }),
                     )}
                   />
@@ -470,7 +460,7 @@ function BuffEffectDialog({
                         ? t('buildPlanner.buffDialog.statCorrectionRateAdd', { stat: statLabel })
                         : t('buildPlanner.buffDialog.statCorrectionFinal')
                     }
-                    {...toSignedNumberInputProps(entry.finalValue, (v) =>
+                    {...toSignedNumberInputProps(entry.finalValue, STAT_CORRECTION_LIMIT, (v) =>
                       updateStatCorrection(id, { finalValue: v }),
                     )}
                   />

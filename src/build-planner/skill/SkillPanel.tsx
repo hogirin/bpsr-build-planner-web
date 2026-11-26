@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import './skill.css';
 import type { ProfessionKey, ProfessionTypeKey } from '../profession';
 import { PROFESSIONS } from '../profession';
-import { classesData } from './skillData';
+import { classesData, getSkillData } from './skillData';
 import { calculateSkillAbilityScore } from '../stats/calculateAbilityScore';
 import {
   selectRoleSkills,
@@ -23,6 +23,7 @@ import { useCursorTooltip } from '../components/useCursorTooltip';
 interface SkillTooltipKey {
   skillId: number;
   isImagine: boolean;
+  isRoleSkill?: boolean;
   rank: number;
   level?: number;
   score?: number;
@@ -102,7 +103,9 @@ export default function SkillPanel({ professionKey }: SkillPanelProps) {
     score?: number,
     align: 'right' | 'left' = 'right',
     level?: number,
-  ): CircleHandlers => makeHandlers({ skillId, isImagine, rank, level, score, align }, align);
+    isRoleSkill = false,
+  ): CircleHandlers =>
+    makeHandlers({ skillId, isImagine, isRoleSkill, rank, level, score, align }, align);
 
   const normalSkillLabel = tUi('buildPlanner.skill.masterySkills', {
     defaultValue: 'マスタリースキル',
@@ -119,6 +122,38 @@ export default function SkillPanel({ professionKey }: SkillPanelProps) {
   const displayFixedIds = rawFixedIds.map((id) => skillReplacements[id] ?? id);
   const masteryIds = cls?.normalSkill ?? [];
   const equippedCount = masteryEquipped.filter(Boolean).length;
+
+  // バトルイマジン/ロールスキルのツールチップは、表示した時点の値ではなくスロットの現在の
+  // ランク/Lv(と能力スコア)を表示し、固定表示中はツールチップ内の切り替えでスロットの
+  // ランク/Lvを変更する(スロット側の操作とツールチップの表示を常に一致させる)。
+  const liveSlotTooltip = (() => {
+    if (!tooltip) return null;
+    const { skillId, isImagine, isRoleSkill } = tooltip.key;
+    if (isImagine) {
+      const i = battleImagines.indexOf(skillId);
+      if (i < 0) return null;
+      const rank = imagineRanks[i] ?? 5;
+      return {
+        rank,
+        score: calculateSkillAbilityScore(skillId, undefined, rank, true),
+        onRankChange: (v: number) => onSetImagineRank(i, v),
+      };
+    }
+    if (isRoleSkill) {
+      const i = roleSkillSlots.indexOf(skillId);
+      if (i < 0) return null;
+      const level = roleSkillRanks[i] ?? 1;
+      // ロールイマジン(Lvを持つロールスキル)は能力スコアも表示する。全体の能力スコアと同じく
+      // スロットのLvで算出する(calculateAbilityScore の skillRole と同じ式)。
+      const isRoleImagine = (getSkillData(skillId)?.maxRank ?? 0) > 0;
+      return {
+        rank: level,
+        score: isRoleImagine ? calculateSkillAbilityScore(skillId, level, 0, false) : undefined,
+        onRankChange: (v: number) => onSetRoleSkillRank(i, v),
+      };
+    }
+    return null;
+  })();
 
   // 固定スキルの能力スコアはグループ内の全skillId(突破後の代替IDを含む場合がある)を
   // 同じLv/Rankで合算する。合計能力スコアの算出ロジックと一致させる。
@@ -253,7 +288,7 @@ export default function SkillPanel({ professionKey }: SkillPanelProps) {
                 onClear={() => onSetRoleSkillSlot(i, null)}
                 circleHandlers={
                   skillId != null
-                    ? makeCircleHandlers(skillId, false, rank, undefined, align)
+                    ? makeCircleHandlers(skillId, false, rank, undefined, align, undefined, true)
                     : undefined
                 }
               />
@@ -264,10 +299,19 @@ export default function SkillPanel({ professionKey }: SkillPanelProps) {
 
       {tooltip && (
         <SkillTooltip
-          state={{ ...tooltip.key, x: tooltip.x, y: tooltip.y, pinned: tooltip.pinned }}
+          state={{
+            ...tooltip.key,
+            ...(liveSlotTooltip
+              ? { rank: liveSlotTooltip.rank, score: liveSlotTooltip.score }
+              : {}),
+            x: tooltip.x,
+            y: tooltip.y,
+            pinned: tooltip.pinned,
+          }}
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
           onRequestClose={close}
+          onRankChange={tooltip.pinned ? liveSlotTooltip?.onRankChange : undefined}
         />
       )}
     </div>

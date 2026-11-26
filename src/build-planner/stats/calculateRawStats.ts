@@ -47,7 +47,7 @@ import {
   FINAL_PCT_STAT_IDS,
   IMAGINE_BUF_FLAT_STAT,
   IMAGINE_BUF_MAIN_STAT_PCT,
-  IMAGINE_BUF_RATING_PER_RATING,
+  IMAGINE_BUF_PCT_PER_RATING,
   IMAGINE_BUF_SPEED,
   IMAGINE_FLAT_STAT,
   IMAGINE_PCT_BASE,
@@ -92,7 +92,7 @@ import {
   imagineDataById,
   levelCumulativeData,
   modulesData,
-  playerLevelSeasonData,
+  getSeasonLevelCumulative,
   refineData,
   talentTree,
   type TalentTreeNode,
@@ -673,16 +673,17 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
   }
 
   // 潜在レベルによるステータス加算（enabled に関わらず常時反映）
-  if (phantomLevel > 0 && playerLevelSeasonData.levelUpAttr.length > 0) {
-    for (const [attrId, perLevel] of playerLevelSeasonData.levelUpAttr) {
-      const statId = PHANTOM_LEVEL_ATTR_TO_STAT[attrId];
-      if (statId !== undefined) addLevelStat(statId, phantomLevel * perLevel);
+  // レベル帯で増加量が変わる(S4: 祈り強度 Lv30まで+20/Lv、以降+10/Lv)ため累積値を使う。
+  if (phantomLevel > 0) {
+    for (const [attrId, total] of Object.entries(getSeasonLevelCumulative(phantomLevel).attrs)) {
+      const statId = PHANTOM_LEVEL_ATTR_TO_STAT[Number(attrId)];
+      if (statId !== undefined) addLevelStat(statId, total);
     }
   }
 
-  // 「<ステータス> N pt につき追加で+M(最大X)」型のイマジンパッシブ(IMAGINE_BUF_RATING_PER_RATING)。
-  // 実数値の確定後(このあとの%ボーナス適用・俊敏変換の後)に加算するため、ここでは集めるだけ。
-  const ratingPerRatingBonuses: { stat: StatId; per: number; step: number; cap: number }[] = [];
+  // 「<ステータス> N pt につき追加で+M%(最大X%)」型のイマジンパッシブ(IMAGINE_BUF_PCT_PER_RATING)。
+  // 判定に使う実数値は%ボーナス適用・俊敏変換の後の値のため、ここでは集めるだけ。
+  const pctPerRatingBonuses: { stat: StatId; per: number; step: number; cap: number }[] = [];
 
   // バトルイマジン パッシブ: 基礎ステータスへの%ボーナス (rawStats に乗算)
   // 装備・アビリティ・モジュール・冒険者レベル・潜在レベルの平坦加算がすべて終わった後の
@@ -731,10 +732,10 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
         if (atk != null) atkSpeedFinalPctAddend += atk / 100;
         continue;
       }
-      const perRatingStat = IMAGINE_BUF_RATING_PER_RATING[buffId];
+      const perRatingStat = IMAGINE_BUF_PCT_PER_RATING[buffId];
       if (perRatingStat != null) {
         const [per, step, cap] = rankParams;
-        if (per > 0) ratingPerRatingBonuses.push({ stat: perRatingStat, per, step, cap });
+        if (per > 0) pctPerRatingBonuses.push({ stat: perRatingStat, per, step, cap });
       }
     }
   }
@@ -957,24 +958,22 @@ export function calculateRawStats(input: CalculateRawStatsInput): CalculateRawSt
   );
   const hasteRawValue = pctBonus.haste ?? 0;
   const hasteFactor = roundClean(1 + hasteRawValue / PERCENT_BASIS_POINTS);
-  let hasteRealAdjusted = roundToInt(roundClean((total.haste + hasteAgilityBonus) * hasteFactor));
+  const hasteRealAdjusted = roundToInt(roundClean((total.haste + hasteAgilityBonus) * hasteFactor));
   // rawStats.haste自体は従来通り、俊敏変換分を含まない値として返す(表示側は
   // derivedStats.hasteReal/hasteRealAdjustedを参照する。CharacterPanel.tsx参照)。
   if (hasteRawValue !== 0) {
     total.haste = roundToInt(roundClean(total.haste * hasteFactor));
   }
 
-  // 「ファスト/器用さ N pt につき追加で+M(最大X)」(幻花の残骸/蝕花の残影): 実数値が確定した
-  // ここで、その時点の最終実数値(ファストは俊敏変換込みのhasteRealAdjusted)から加算量を求める。
-  // 加算分自体は判定の基準に含めない(ゲーム内説明文どおり、元の実数値 N pt ごとの加算とみなす)。
-  for (const b of ratingPerRatingBonuses) {
+  // 「ファスト/器用さ N pt につき追加で+M%(最大X%)」(幻花の残骸/蝕花の残影): 実数値が確定した
+  // ここで、その時点の最終実数値(ファストは俊敏変換込みのhasteRealAdjusted)から加算量を求め、
+  // 実数値ではなく最終%表示値への直接加算(finalPctAddend、単位 100 = 1%)として反映する
+  // (2026-11-25不具合報告: 以前は p2 を実数値ptとして加算しており、%にほぼ反映されていなかった)。
+  for (const b of pctPerRatingBonuses) {
     const current = b.stat === 'haste' ? hasteRealAdjusted : total[b.stat];
     const bonus = Math.min(b.cap, Math.floor(current / b.per) * b.step);
     if (bonus <= 0) continue;
-    if (b.stat === 'haste') hasteRealAdjusted += bonus;
-    total[b.stat] += bonus;
-    // 内訳表示では加算列に含める(%ボーナス適用後の加算だが、表示上は加算元の一つとして扱う)。
-    additive[b.stat] = (additive[b.stat] ?? 0) + bonus;
+    finalPctAddend[b.stat] = (finalPctAddend[b.stat] ?? 0) + bonus;
   }
 
   const breakdown = {} as Record<StatId, StatBreakdownEntry>;

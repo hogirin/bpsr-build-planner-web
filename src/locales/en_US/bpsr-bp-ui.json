@@ -139,14 +139,27 @@
     "equipLevel": "Equip Lv.{{level}}",
     "perfectline": "Perfection",
     "refineLevel": "Refine Lv",
+    "refineBulk": {
+      "openButton": "Bulk Refine Lv",
+      "title": "Bulk Refine Lv",
+      "bulkHeading": "Bulk Change",
+      "all": "All Slots",
+      "attack": "Offensive Slots",
+      "defense": "Defensive Slots",
+      "apply": "Apply"
+    },
     "emptySlot": "Empty",
     "unequip": "Unequip",
     "selectEquipmentTitle": "Select {{slot}}",
     "candidateFilter": {
       "toggle": "Filter",
+      "below300": "<Lv300",
       "lv320": "Lv320s",
       "lv340": "Lv340s",
-      "lv360": "Lv360s"
+      "lv360": "Lv360s",
+      "legendary": "Legendary",
+      "kiwami": "Superior",
+      "takumi": "Crafted"
     },
     "selectProfessionTitle": "Select Class",
     "professionLabel": "Class",
@@ -213,6 +226,16 @@
       "confirmSwitchMsg": "Switch to \"{{name}}\"? Your current changes will be lost.",
       "nameDuplicate": "A preset with this name already exists"
     },
+    "affixPreset": {
+      "placeholder": "Select an imprint preset",
+      "save": "Save Imprint Preset",
+      "saveTitle": "Save Imprint Preset",
+      "defaultName": "Imprint Preset {{n}}",
+      "noPresets": "No saved imprint presets",
+      "capReachedMsg": "Reached the save limit ({{max}}). Delete a preset before saving a new one.",
+      "confirmSwitchMsg": "Apply \"{{name}}\"? Your current factor level and imprint settings will be lost.",
+      "nameDuplicate": "A preset with this name already exists"
+    },
     "baseStats": "Base Stats",
     "evolutionStats": "Advanced Attributes",
     "rareStats": "Rare Attributes",
@@ -222,6 +245,7 @@
     "equippedEffects": "Equipped Effects",
     "enchantCost": "Cost",
     "enchantAdvancedCost": "Advanced Attach Cost",
+    "enchantSeason": "Season {{n}}",
     "enchantGradeBase": "Normal",
     "enchantGradeRefined": "Refined",
     "enchantGradePerfect": "Perfect",
@@ -232,8 +256,11 @@
       "masterySkills": "Mastery Skills",
       "rank": "Rank",
       "rankFormat": "Tier {{v}}",
+      "levelFormat": "Lv{{v}}",
       "selectImagine": "Select Imagine",
       "selectRoleSkill": "Select Role Skill",
+      "roleBasicSkills": "Basic Skills",
+      "roleImagines": "Role Imagines",
       "equip": "Equip"
     },
     "imagineFilter": {
@@ -408,7 +435,7 @@
       "factorDuplicateMsg": "\"{{factor}}\" is already equipped in \"{{slot}}\". Swap it here?",
       "factorDuplicateConfirm": "Swap",
       "pathUndecided": "(Path undecided)",
-      "bulkGradeLabel": "Bulk grade adjust",
+      "bulkLevelLabel": "Bulk factor level adjust",
       "enabledOn": "Enabled",
       "enabledOff": "Disabled",
       "enabledLockedTitle": "Can't enable: the selected tree isn't unlocked yet",
@@ -421,10 +448,12 @@
       "effectSummary": {
         "sections": {
           "total": "Summary",
+          "affix": "Imprint Effects",
           "intermediate": "Intermediate Node Effects",
           "ordinary": "Basic Node Effects"
         },
         "statEmpty": "No stats are affected",
+        "affixEmpty": "No imprints are embedded",
         "individualLabel": "Individual Effects",
         "flatCol": "Flat",
         "pctCol": "Mult. %",
@@ -433,16 +462,27 @@
       },
       "factorDialogTitle": "Factor Settings - {{slot}}",
       "factorSelect": "Factor",
-      "factorGrade": "Grade",
+      "factorLevel": "Factor Level",
+      "factorTypeLabel": "Factor type: {{type}}",
+      "factorClassLabel": "Class: {{class}}",
+      "factorClassUnrestricted": "Unrestricted",
+      "factorSchoolLabel": "Type: {{type}}",
+      "factorSchoolMismatchShort": "No effect (type mismatch)",
+      "factorSchoolMismatch": "This singularity factor belongs to \"{{type}}\". It has no effect because it does not match your character's current type.",
+      "affixLossOnLevelDownMsg": "Lowering the factor level to G{{level}} will remove {{count}} imprint(s). Change the level?",
+      "affixLossOnLevelDownConfirm": "Change",
       "factorEffect": "Factor Effect",
       "affixHeading": "Imprints",
+      "affixBulkQuality": "Set all rarities",
+      "affixBulkQualityConfirmMsg": "Change the rarity of {{count}} imprint(s) to \"{{quality}}\"? Their effect values will be reset.",
+      "affixBulkQualityConfirm": "Change",
       "affixNeedFactor": "Select a factor to set imprints.",
       "affixSlot": "Slot {{n}}",
       "affixSlotType": {
         "1": "Attribute",
         "2": "Class"
       },
-      "affixLocked": "Unlocks at G{{grade}}",
+      "affixLocked": "Unlocks at G{{level}}",
       "affixNone": "None",
       "affixValue": "Value",
       "affixCount": "{{count}} Imprint(s)",
@@ -457,6 +497,7 @@
         "105": "Element",
         "1001": "Class Imprint"
       },
+      "affixLibClass": "Class Imprint ({{class}})",
       "affixEffect": "Imprint Effects",
       "affixNonStackingShort": "No stacking",
       "affixNonStackingWarning": "This effect does not stack. The same imprint is also set in another slot (including other factors); only the one with the highest value is applied."

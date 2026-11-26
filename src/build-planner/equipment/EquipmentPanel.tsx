@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import './equipment.css';
 import {
+  ALL_EQUIPMENT_SLOTS,
   EQUIPMENT_BOTTOM_SLOTS,
   EQUIPMENT_TOP_SLOTS,
   getGearType,
@@ -14,7 +15,8 @@ import { useBuildStore } from '../store/useBuildStore';
 import EquipmentSlotPicker from './EquipmentSlotPicker';
 import EquipmentSlotButton from './EquipmentSlotButton';
 import EquipmentItemPopup from './EquipmentItemPopup';
-import type { CandidateGsFilter } from './equipmentSlotPickerData';
+import RefineBulkDialog from './RefineBulkDialog';
+import type { CandidateGsFilter, CandidateKindFilter } from './equipmentSlotPickerData';
 import {
   getDefaultCandidateGsFilter,
   isSeaBreezeSeries,
@@ -87,13 +89,6 @@ function getEquipBgUrl(slot: EquipmentSlotId, item?: EquipmentItem): string | un
 
 const BOTTOM_SLOT_SET = new Set<EquipmentSlotId>(EQUIPMENT_BOTTOM_SLOTS);
 
-// 装備選択ダイアログのヘッダーにある部位切り替えボタン用の全部位一覧(表示順)。
-const ALL_EQUIPMENT_SLOTS: EquipmentSlotId[] = [
-  'weapon',
-  ...EQUIPMENT_TOP_SLOTS,
-  ...EQUIPMENT_BOTTOM_SLOTS,
-];
-
 // パネル右側寄りの部位はポップアップが画面外/クリック操作の邪魔になるため左側に表示する。
 const LEFT_ALIGNED_POPUP_SLOTS = new Set<EquipmentSlotId>([
   'arms',
@@ -148,6 +143,8 @@ function EquipmentPanel({ profession, professionTypeKey }: EquipmentPanelProps) 
   const onEquip = useBuildStore((s) => s.equip);
   const onUnequip = useBuildStore((s) => s.unequip);
   const onRefineLevel = useBuildStore((s) => s.setRefineLevel);
+  const onRefineLevels = useBuildStore((s) => s.setRefineLevels);
+  const [refineBulkOpen, setRefineBulkOpen] = useState(false);
   const onPerfectline = useBuildStore((s) => s.setPerfectline);
   const onSetEvolutionStat = useBuildStore((s) => s.setEvolutionStat);
   const onSetLegendaryAffix = useBuildStore((s) => s.setLegendaryAffix);
@@ -161,6 +158,8 @@ function EquipmentPanel({ profession, professionTypeKey }: EquipmentPanelProps) 
   const [candidateGsFilter, setCandidateGsFilter] = useState<CandidateGsFilter | null>(() =>
     getDefaultCandidateGsFilter(),
   );
+  // 装備選択候補の種別(伝説/極/匠)フィルター。GS帯フィルターと同様にこのパネル側で保持する。
+  const [candidateKindFilter, setCandidateKindFilter] = useState<CandidateKindFilter | null>(null);
   // スキルパネル等と揃え、0.5秒とどまってから表示するhover intent。カーソルが動き続けている
   // 間はopenが呼ばれるたびリセットされる(EquipmentSlotButtonのonHoverMoveはmousemoveの
   // たびに呼ばれるため、入室直後の1回目も含めてenter/move兼用で機能する)。
@@ -219,15 +218,35 @@ function EquipmentPanel({ profession, professionTypeKey }: EquipmentPanelProps) 
 
   return (
     <section className="equipment-panel">
-      <div className="equipment-panel__weapon">{renderSlot('weapon')}</div>
-      <div className="equipment-panel__grids">
-        <div className="equipment-panel__grid equipment-panel__grid--top">
-          {EQUIPMENT_TOP_SLOTS.map(renderSlot)}
-        </div>
-        <div className="equipment-panel__grid equipment-panel__grid--bottom">
-          {EQUIPMENT_BOTTOM_SLOTS.map(renderSlot)}
+      <div className="equipment-panel__toolbar">
+        <button
+          type="button"
+          className="equipment-panel__toolbar-btn"
+          onClick={() => setRefineBulkOpen(true)}
+        >
+          {t('buildPlanner.refineBulk.openButton')}
+        </button>
+      </div>
+      <div className="equipment-panel__body">
+        <div className="equipment-panel__weapon">{renderSlot('weapon')}</div>
+        <div className="equipment-panel__grids">
+          <div className="equipment-panel__grid equipment-panel__grid--top">
+            {EQUIPMENT_TOP_SLOTS.map(renderSlot)}
+          </div>
+          <div className="equipment-panel__grid equipment-panel__grid--bottom">
+            {EQUIPMENT_BOTTOM_SLOTS.map(renderSlot)}
+          </div>
         </div>
       </div>
+      {refineBulkOpen && (
+        <RefineBulkDialog
+          refineLevels={refineLevels}
+          profession={profession}
+          onChange={onRefineLevels}
+          getSlotIcon={(slot) => getSlotIconUrl(slot, undefined)}
+          onClose={() => setRefineBulkOpen(false)}
+        />
+      )}
       {openSlot && (
         <EquipmentSlotPicker
           slot={openSlot}
@@ -249,6 +268,8 @@ function EquipmentPanel({ profession, professionTypeKey }: EquipmentPanelProps) 
           selectedEnchant={slotEnchants[openSlot] ?? undefined}
           candidateGsFilter={candidateGsFilter}
           onSetCandidateGsFilter={setCandidateGsFilter}
+          candidateKindFilter={candidateKindFilter}
+          onSetCandidateKindFilter={setCandidateKindFilter}
           onSelect={(selected) => onEquip(openSlot, selected)}
           onUnequip={() => onUnequip(openSlot)}
           onRefineLevel={(level) => onRefineLevel(openSlot, level)}

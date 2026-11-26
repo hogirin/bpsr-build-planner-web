@@ -10,6 +10,7 @@ import { useAnchorTooltip } from '../components/useAnchorTooltip';
 import { useSessionState } from '../components/useSessionState';
 import DraggableDialog from '../components/DraggableDialog';
 import Dropdown from '../components/Dropdown';
+import SelectDropdown from '../components/SelectDropdown';
 import FloatingTooltip from '../components/FloatingTooltip';
 import { useArrowKeySelect } from '../components/useArrowKeySelect';
 import StatRow from '../components/StatRow';
@@ -34,7 +35,12 @@ import type {
   EvolutionStatId,
   LegendaryAffixSelection,
 } from '../types';
-import type { CandidateGsFilter, EnchantGrade, EnchantItem } from './equipmentSlotPickerData';
+import type {
+  CandidateGsFilter,
+  CandidateKindFilter,
+  EnchantGrade,
+  EnchantItem,
+} from './equipmentSlotPickerData';
 import {
   calcStatValue,
   CANDIDATE_GS_FILTERS,
@@ -48,7 +54,8 @@ import {
   getPlaceholderStatIds,
   getQualityColor,
   getSuitInfo,
-  isCandidateGsMatch,
+  CANDIDATE_KIND_FILTERS,
+  filterCandidates,
   compareEnchantItems,
   REFINE_LEVEL_MILESTONES,
   resolveEnchantGradeView,
@@ -78,6 +85,8 @@ interface EquipmentSlotPickerProps {
   // null = 未選択(絞り込みなし、選択中のボタンを再クリックすると解除される)。
   candidateGsFilter: CandidateGsFilter | null;
   onSetCandidateGsFilter: (filter: CandidateGsFilter | null) => void;
+  candidateKindFilter: CandidateKindFilter | null;
+  onSetCandidateKindFilter: (filter: CandidateKindFilter | null) => void;
   onSelect: (item: EquipmentItem) => void;
   onUnequip: () => void;
   onRefineLevel: (level: number) => void;
@@ -143,6 +152,8 @@ function EquipmentSlotPicker({
   selectedEnchant,
   candidateGsFilter,
   onSetCandidateGsFilter,
+  candidateKindFilter,
+  onSetCandidateKindFilter,
   onSelect,
   onUnequip,
   onRefineLevel,
@@ -229,33 +240,23 @@ function EquipmentSlotPicker({
     : undefined;
 
   // 装着効果データ (enchantId がある場合のみ)
-  // GS帯フィルター一致(優先表示、除外はしない) → 装備レベル降順 → レア度降順 → 名前昇順 → ID昇順
+  // 絞り込み(GS帯・種別)に一致する候補と現在の選択値のみを、装備レベル降順 → レア度降順 →
+  // 名前昇順 → ID昇順で並べる。
   const sortedCandidates = useMemo(
     () =>
-      [...candidates].sort((a, b) => {
-        if (candidateGsFilter) {
-          const matchA = isCandidateGsMatch(a, candidateGsFilter);
-          const matchB = isCandidateGsMatch(b, candidateGsFilter);
-          if (matchA !== matchB) return matchA ? -1 : 1;
-        }
-        if (b.equipGs !== a.equipGs) return b.equipGs - a.equipGs;
-        if (b.quality !== a.quality) return b.quality - a.quality;
-        const na = t(`items.${a.id}.name`, { ns: 'game-data' });
-        const nb = t(`items.${b.id}.name`, { ns: 'game-data' });
-        const nc = na.localeCompare(nb);
-        if (nc !== 0) return nc;
-        return a.id - b.id;
-      }),
-    [candidates, candidateGsFilter, t],
+      filterCandidates(candidates, candidateGsFilter, candidateKindFilter, equippedId).sort(
+        (a, b) => {
+          if (b.equipGs !== a.equipGs) return b.equipGs - a.equipGs;
+          if (b.quality !== a.quality) return b.quality - a.quality;
+          const na = t(`items.${a.id}.name`, { ns: 'game-data' });
+          const nb = t(`items.${b.id}.name`, { ns: 'game-data' });
+          const nc = na.localeCompare(nb);
+          if (nc !== 0) return nc;
+          return a.id - b.id;
+        },
+      ),
+    [candidates, candidateGsFilter, candidateKindFilter, equippedId, t],
   );
-  // GS帯フィルター適用中、一致グループ→非一致グループへ切り替わる境界のインデックス
-  // (sortedCandidatesは一致優先でソート済みのため、境界は最大1箇所)。未適用時・先頭から
-  // 非一致(=一致が1件もない)場合は-1(区切りを表示しない)。
-  const candidateDividerIndex = useMemo(() => {
-    if (!candidateGsFilter) return -1;
-    const index = sortedCandidates.findIndex((c) => !isCandidateGsMatch(c, candidateGsFilter));
-    return index > 0 ? index : -1;
-  }, [sortedCandidates, candidateGsFilter]);
 
   // "F-"/"T-" 接頭辞付きアイテムは無接頭辞の同名(同効果)アイテムの重複エントリのため非表示にする。
   const enchantsList = (
@@ -567,16 +568,25 @@ function EquipmentSlotPicker({
 
             <div className="equip-details-section">
               <CollapsibleSection
+                className="filter-panel"
                 open={candidateFilterExpanded}
                 onToggle={() => setCandidateFilterExpanded((v) => !v)}
                 label={t('buildPlanner.candidateFilter.toggle')}
               >
-                <ToggleButtonGroup
-                  options={CANDIDATE_GS_FILTERS}
-                  value={candidateGsFilter}
-                  getLabel={(filter) => t(`buildPlanner.candidateFilter.${filter}`)}
-                  onChange={onSetCandidateGsFilter}
-                />
+                <div className="equipment-dialog__candidate-filters">
+                  <ToggleButtonGroup
+                    options={CANDIDATE_GS_FILTERS}
+                    value={candidateGsFilter}
+                    getLabel={(filter) => t(`buildPlanner.candidateFilter.${filter}`)}
+                    onChange={onSetCandidateGsFilter}
+                  />
+                  <ToggleButtonGroup
+                    options={CANDIDATE_KIND_FILTERS}
+                    value={candidateKindFilter}
+                    getLabel={(filter) => t(`buildPlanner.candidateFilter.${filter}`)}
+                    onChange={onSetCandidateKindFilter}
+                  />
+                </div>
               </CollapsibleSection>
               <Dropdown
                 autoFocus
@@ -614,29 +624,25 @@ function EquipmentSlotPicker({
                     >
                       {t('buildPlanner.emptySlot')}
                     </button>
-                    {sortedCandidates.map((candidate, i) => {
+                    {sortedCandidates.map((candidate) => {
                       const name = t(`items.${candidate.id}.name`, { ns: 'game-data' });
                       return (
-                        <Fragment key={candidate.id}>
-                          {i === candidateDividerIndex && (
-                            <div className="equipment-dialog__select-divider" />
-                          )}
-                          <button
-                            type="button"
-                            className={`equipment-dialog__select-option${candidate.id === equippedId ? ' equipment-dialog__select-option--selected' : ''}`}
-                            data-selected={candidate.id === equippedId}
-                            style={{ color: getItemNameColor(candidate) }}
-                            onClick={() => {
-                              onSelect(candidate);
-                              hideCandidateTooltip();
-                              close();
-                            }}
-                            onMouseMove={(e) => showCandidateTooltip(candidate, e)}
-                            onMouseLeave={hideCandidateTooltip}
-                          >
-                            {`${candidate.equipGs} ${name}`}
-                          </button>
-                        </Fragment>
+                        <button
+                          key={candidate.id}
+                          type="button"
+                          className={`equipment-dialog__select-option${candidate.id === equippedId ? ' equipment-dialog__select-option--selected' : ''}`}
+                          data-selected={candidate.id === equippedId}
+                          style={{ color: getItemNameColor(candidate) }}
+                          onClick={() => {
+                            onSelect(candidate);
+                            hideCandidateTooltip();
+                            close();
+                          }}
+                          onMouseMove={(e) => showCandidateTooltip(candidate, e)}
+                          onMouseLeave={hideCandidateTooltip}
+                        >
+                          {`${candidate.equipGs} ${name}`}
+                        </button>
                       );
                     })}
                   </>
@@ -750,20 +756,18 @@ function EquipmentSlotPicker({
                     <span className="equip-bt-selector__label">
                       {t('buildPlanner.breakthrough')}
                     </span>
-                    <select
+                    <SelectDropdown
                       className="equip-bt-selector__select"
-                      value={String(equippedId)}
-                      onChange={(e) => {
-                        const selected = candidates.find((c) => String(c.id) === e.target.value);
+                      value={equippedId}
+                      options={btGroup!.map((item) => ({
+                        value: item.id,
+                        label: `Lv.${item.equipGs}`,
+                      }))}
+                      onChange={(id) => {
+                        const selected = candidates.find((c) => c.id === id);
                         if (selected) onSelect(selected);
                       }}
-                    >
-                      {btGroup!.map((item) => (
-                        <option key={item.id} value={String(item.id)}>
-                          Lv.{item.equipGs}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 )}
               </div>
@@ -996,21 +1000,21 @@ function EquipmentSlotPicker({
                     未装備時は選択しても意味がないため表示しない。 */}
                 {equippedItem && (
                   <div className="equip-bt-selector">
-                    <select
+                    <SelectDropdown<EnchantGrade>
                       className="equip-bt-selector__select"
                       value={enchantGradePreference}
-                      onChange={(e) => {
-                        const grade = e.target.value as EnchantGrade;
+                      options={[
+                        { value: 'base', label: t('buildPlanner.enchantGradeBase') },
+                        { value: 'refined', label: t('buildPlanner.enchantGradeRefined') },
+                        { value: 'perfect', label: t('buildPlanner.enchantGradePerfect') },
+                      ]}
+                      onChange={(grade) => {
                         setEnchantGradePreference(grade);
                         if (baseEnchantItem) {
                           onSetEnchant(resolveEnchantGradeView(baseEnchantItem, grade).id);
                         }
                       }}
-                    >
-                      <option value="base">{t('buildPlanner.enchantGradeBase')}</option>
-                      <option value="refined">{t('buildPlanner.enchantGradeRefined')}</option>
-                      <option value="perfect">{t('buildPlanner.enchantGradePerfect')}</option>
-                    </select>
+                    />
                   </div>
                 )}
               </div>
@@ -1059,33 +1063,44 @@ function EquipmentSlotPicker({
                         >
                           {t('buildPlanner.evolutionStatUnset')}
                         </button>
-                        {sortedEnchants.map((enchant) => {
+                        {sortedEnchants.map((enchant, i) => {
                           const enchantIcon = enchant.icon
                             ? getEnchantIconUrl(enchant.icon)
                             : undefined;
                           // 希望グレード(通常/精/極)を適用した表示名・選択先ID。
                           const view = resolveEnchantGradeView(enchant, enchantGradePreference);
+                          // 刻印はシーズン降順で並んでいるため、シーズンが変わる位置に見出しを入れる
+                          // (シーズンを持たない宝石のセットでは出さない)。
+                          const seasonHeading =
+                            enchant.series !== undefined &&
+                            enchant.series !== sortedEnchants[i - 1]?.series ? (
+                              <div className="equip-enchant-season">
+                                {t('buildPlanner.enchantSeason', { n: enchant.series })}
+                              </div>
+                            ) : null;
                           return (
-                            <button
-                              key={enchant.id}
-                              type="button"
-                              className={`equip-enchant-option${selectedEnchant === view.id ? ' equip-enchant-option--selected' : ''}`}
-                              data-selected={selectedEnchant === view.id}
-                              onClick={() => {
-                                onSetEnchant(view.id);
-                                closeEnchantTooltip();
-                                close();
-                              }}
-                              onMouseEnter={(e) => showEnchantTooltip(enchant, e)}
-                              onMouseLeave={hideEnchantTooltip}
-                            >
-                              {enchantIcon && (
-                                <img className="equip-enchant-icon" src={enchantIcon} alt="" />
-                              )}
-                              <span style={{ color: getQualityColor(enchant.quality) }}>
-                                {t(`items.${view.id}.name`, { ns: 'game-data' })}
-                              </span>
-                            </button>
+                            <Fragment key={enchant.id}>
+                              {seasonHeading}
+                              <button
+                                type="button"
+                                className={`equip-enchant-option${selectedEnchant === view.id ? ' equip-enchant-option--selected' : ''}`}
+                                data-selected={selectedEnchant === view.id}
+                                onClick={() => {
+                                  onSetEnchant(view.id);
+                                  closeEnchantTooltip();
+                                  close();
+                                }}
+                                onMouseEnter={(e) => showEnchantTooltip(enchant, e)}
+                                onMouseLeave={hideEnchantTooltip}
+                              >
+                                {enchantIcon && (
+                                  <img className="equip-enchant-icon" src={enchantIcon} alt="" />
+                                )}
+                                <span style={{ color: getQualityColor(enchant.quality) }}>
+                                  {t(`items.${view.id}.name`, { ns: 'game-data' })}
+                                </span>
+                              </button>
+                            </Fragment>
                           );
                         })}
                       </>

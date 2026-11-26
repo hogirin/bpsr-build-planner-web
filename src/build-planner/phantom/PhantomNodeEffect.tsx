@@ -5,12 +5,13 @@ import { useLinkTextPopup } from '../components/useLinkTextPopup';
 import type { PhantomFactorSlotValue } from './phantomData';
 import { getSTAsset, getUnlockLevel, iconPathToFile, stData } from './phantomData';
 import {
-  factorBaseName,
+  factorDetailLines,
+  factorShortName,
   formatType1Effect,
-  getFactorEffectDesc,
+  getFactorEffectMarkup,
   getNodeEffectDesc,
 } from './phantomView';
-import { affixEffectText, getActiveAffixEffects } from './phantomAffixData';
+import { affixEffectMarkup, getActiveAffixEffects } from './phantomAffixData';
 
 // 選択中ノードの効果詳細表示(固定ノード=ステータス/バフ効果、因子スロット=装着中の因子効果)。
 // PhantomPanel から分離。
@@ -107,7 +108,7 @@ export default function PhantomNodeEffect({
     const iconSrc = slot ? getSTAsset(iconPathToFile(slot.icon)) : '';
     const current = phantomFactorSlots[groupId] ?? null;
     const factorEffectDesc = current
-      ? getFactorEffectDesc(tg, current.classKey, current.grade)
+      ? getFactorEffectMarkup(tg, current.classKey, current.grade)
       : '';
     // 因子に埋め込んだ映痕の効果(同種は合計、重複不可は最大値)。因子設定ダイアログの「映痕の効果」と同じ。
     const affixEffects = getActiveAffixEffects(current);
@@ -120,11 +121,23 @@ export default function PhantomNodeEffect({
           </span>
         </div>
         {current && (
-          <div className="phantom-desc-factor">
-            {factorBaseName(tg, current.classKey)} G{current.grade}
+          <>
+            <div className="phantom-desc-factor">
+              {factorShortName(tg, current.classKey)} G{current.grade}
+            </div>
+            {/* 因子名はクラス名を省いた短縮名のため、因子タイプ/クラス/型の所属を補う */}
+            {factorDetailLines(t, tg, current.classKey).map((line) => (
+              <div key={line} className="phantom-desc-factor-meta">
+                {line}
+              </div>
+            ))}
+          </>
+        )}
+        {factorEffectDesc && (
+          <div className="phantom-desc-text">
+            {renderMarkup(factorEffectDesc, linkTextPopup.handlers)}
           </div>
         )}
-        {factorEffectDesc && <div className="phantom-desc-text">{factorEffectDesc}</div>}
         {affixEffects.length > 0 && (
           <div className="phantom-desc-affixes">
             <div className="phantom-desc-affixes__heading">
@@ -132,12 +145,13 @@ export default function PhantomNodeEffect({
             </div>
             {affixEffects.map((a) => (
               <div key={a.group} className="phantom-desc-affixes__effect">
-                {affixEffectText(tg, a)}
+                {renderMarkup(affixEffectMarkup(tg, a), linkTextPopup.handlers)}
               </div>
             ))}
           </div>
         )}
         {lockedNote}
+        {linkTextPopupNode}
       </>
     );
   }

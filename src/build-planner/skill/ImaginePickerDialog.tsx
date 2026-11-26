@@ -42,16 +42,26 @@ function ImaginePickerDialog({
   const {
     tooltip: hoverTooltip,
     open: openHover,
-    cancelClose: cancelHoverClose,
+    hold: holdHover,
     scheduleClose: hideHover,
-  } = useAnchorTooltip<{ skillId: number; x: number; y: number }>(
+  } = useAnchorTooltip<{ skillId: number; x: number; y: number; align: 'right' | 'left' }>(
     500,
     (a, b) => a.skillId === b.skillId,
+    // ツールチップ内のランク/Lv切り替えを操作しやすいよう、閉じるまでの猶予を長めにし、
+    // ツールチップへ向かう途中で他の候補の上を横切っても表示中のツールチップを消さない。
+    { closeDelay: 400, keepWhileSwitching: true },
   ); // 別イマジンへの切り替えは一旦閉じて0.5秒待たせるhover intent
 
   const showHover = (id: number, e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    openHover({ skillId: id, x: rect.right + 10, y: rect.top });
+    // 画面の右半分にあるイマジンは、ツールチップが画面外へはみ出したりダイアログの他の
+    // イマジンを覆ったりしないよう、イマジンの左側に表示する。
+    const onRightSide = rect.left + rect.width / 2 > window.innerWidth / 2;
+    openHover(
+      onRightSide
+        ? { skillId: id, x: rect.left - 10, y: rect.top, align: 'left' }
+        : { skillId: id, x: rect.right + 10, y: rect.top, align: 'right' },
+    );
   };
 
   // コラボは品質(特殊金/橙/紫)を持たない排他カテゴリのため、コラボ⇔品質フィルターは
@@ -99,7 +109,7 @@ function ImaginePickerDialog({
             ))}
           </div>
           <CollapsibleSection
-            className="skill-picker-dialog__filter-block"
+            className="skill-picker-dialog__filter-block filter-panel"
             open={filterExpanded}
             onToggle={() => setFilterExpanded((v) => !v)}
             label={tUi('buildPlanner.imagineFilter.toggle')}
@@ -164,10 +174,13 @@ function ImaginePickerDialog({
               rank,
               x: hoverTooltip.x,
               y: hoverTooltip.y,
+              align: hoverTooltip.align,
               pinned: false,
             }}
-            onMouseEnter={cancelHoverClose}
+            onMouseEnter={holdHover}
             onMouseLeave={hideHover}
+            // ツールチップ内でランクを切り替えると、ダイアログで選択中のランクも連動して変わる。
+            onRankChange={setRank}
           />,
           document.body,
         )}

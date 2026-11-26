@@ -202,11 +202,11 @@
    折りたたみボタンと同様スクロールさせずに固定表示する。
    折りたたみトグル(.phantom-right__collapse-toggle、left:8px、width:24px)が左上に
    絶対配置されているため、左に余白を確保しないと「合計」ラベル等がボタンの背面に
-   隠れてしまう。子要素側のpadding(6px〜10px程度)と合わせてボタンの右端(32px)を
-   避けられるよう、ここでまとめて余白を追加する。 */
+   隠れてしまう。ノード効果は枠線+ドロップシャドウ付きの浮いた枠(.phantom-desc-area)のため、
+   ボタンの右端(32px)から8px空けた位置から枠を始める。 */
 .phantom-right__fixed {
   flex-shrink: 0;
-  padding-left: 30px;
+  padding-left: 40px;
 }
 
 /* ノード設定だけをスクロール領域にする。ノード効果(展開時)の高さ次第では
@@ -237,18 +237,29 @@
   width: 24px;
   height: 24px;
   background: #22222b;
-  border: 1px solid #3a3a45;
+  border: 1px solid #4a4a58;
   border-radius: 4px;
-  color: #8a8a96;
+  color: #a8a8b6;
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
   z-index: 5;
+  /* パネルの開閉ボタンだとわかるよう、薄い影で少し浮かせて強調する */
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .phantom-right__collapse-toggle:hover {
   color: #f4a13a;
-  border-color: #555560;
+  border-color: #5a5a68;
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.6),
+    0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .phantom-right--collapsed .phantom-right__collapse-toggle {
@@ -279,9 +290,20 @@
 }
 
 /* ---- ノード効果エリア ---- */
+/* ノード効果(開閉可能)。下のノード設定(スクロール領域)との区切りがわかるよう、枠+ドロップ
+   シャドウで少し浮いた表示にする(z-indexでスクロールするノード設定より手前に描く)。 */
 .phantom-desc-area {
-  border-bottom: 1px solid #2a2a33;
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
+  margin: 4px 6px 10px 0;
+  border: 1px solid #34344a;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(24, 24, 32, 0.96);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.35);
   font-size: 13px;
 }
 
@@ -367,6 +389,12 @@
   margin-top: 3px;
 }
 
+/* 因子名の下の因子タイプ/クラス/型の所属 */
+.phantom-desc-factor-meta {
+  color: #8a8aa6;
+  font-size: 14px;
+}
+
 .phantom-desc-text {
   color: #7a7a9a;
   font-size: 17px;
@@ -390,7 +418,7 @@
 .phantom-desc-affixes__effect {
   font-size: 16px;
   line-height: 1.5;
-  color: #7fd1a0;
+  color: #7a7a9a;
 }
 
 /* 未開放ノードの説明末尾に付く「（Lv.Nで開放）」 */
@@ -484,7 +512,7 @@
 }
 
 /* ルートノード行右端の「因子ランク一括変更」。特別な操作だと分かるよう軽く強調する。 */
-.phantom-bulk-grade {
+.phantom-bulk-level {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -495,7 +523,7 @@
   background: rgba(74, 200, 223, 0.08);
 }
 
-.phantom-bulk-grade__label {
+.phantom-bulk-level__label {
   font-size: 13px;
   color: #6ad0e0;
   white-space: nowrap;
@@ -635,7 +663,7 @@
   color: #8a8a96;
 }
 
-.phantom-factor-frame__grade {
+.phantom-factor-frame__level {
   flex-shrink: 0;
   font-size: 15px;
   color: #7ab4f4;
@@ -718,12 +746,12 @@
   color: #e8e6e1;
 }
 
-.phantom-factor-dialog__grades {
+.phantom-factor-dialog__levels {
   display: flex;
   gap: 4px;
 }
 
-.phantom-factor-dialog__grade {
+.phantom-factor-dialog__level {
   flex: 1;
   padding: 6px 0;
   background: #23232d;
@@ -735,7 +763,7 @@
   cursor: pointer;
 }
 
-.phantom-factor-dialog__grade--active {
+.phantom-factor-dialog__level--active {
   border-color: #7ab4f4;
   color: #e8e6e1;
   background: #2a3346;
@@ -797,13 +825,12 @@
   max-width: 100%;
 }
 
-.phantom-affix-dropdown .phantom-dropdown__trigger,
-.phantom-affix-dropdown .phantom-dropdown__label,
-.phantom-dropdown__list.phantom-affix-dropdown .phantom-dropdown__item {
+.phantom-affix-dropdown .select-dropdown,
+.select-dropdown__list.phantom-affix-dropdown {
   font-size: 14px;
 }
 
-.phantom-affix-dropdown .phantom-dropdown__trigger {
+.phantom-affix-dropdown .select-dropdown {
   height: 34px;
 }
 
@@ -865,20 +892,12 @@
   gap: 3px;
   font-size: 13px;
   line-height: 1.5;
-  color: #7fd1a0;
+  color: #c8c6c1;
 }
 
-.phantom-dropdown__group {
-  padding: 6px 12px 3px;
-  font-size: 12px;
-  color: #7ab4f4;
-  border-top: 1px solid #2a2a33;
-  position: sticky;
-  top: 0;
-  background: #1e1e2a;
-}
-
-/* ---- Custom Dropdown ---- */
+/* ---- 心相晶のドロップダウン(CustomDropdown) ----
+   見た目・操作は共通の SelectDropdown(components.css の select-dropdown)に揃え、
+   ここでは心相晶向けの大きめのサイズだけを指定する。 */
 .phantom-dropdown {
   position: relative;
   display: inline-flex;
@@ -890,145 +909,47 @@
   max-width: 450px;
 }
 
-/* 因子選択ドロップダウン(因子設定ダイアログ内)。長い因子名でも文字欠けしにくいよう、
-   文字サイズを他のドロップダウン(テンプレート選択)より少し小さくする。 */
-.phantom-factor-dropdown .phantom-dropdown__trigger,
-.phantom-factor-dropdown .phantom-dropdown__label,
-.phantom-dropdown__list.phantom-factor-dropdown .phantom-dropdown__item {
-  font-size: 15px;
-}
-
-.phantom-dropdown__trigger {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: #23232d;
-  border: 1px solid #3a3a4a;
-  color: #e8e6e1;
-  border-radius: 3px;
+.phantom-dropdown .select-dropdown {
+  width: 100%;
   height: 38px;
   padding: 0 8px;
+  border-radius: 3px;
+  background: #23232d;
   font-size: 17px;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
+}
+
+.select-dropdown__list.phantom-dropdown__list {
+  font-size: 17px;
+}
+
+.phantom-dropdown__list .select-dropdown__option {
+  gap: 8px;
+  padding: 7px 12px;
   white-space: nowrap;
-  overflow: hidden;
 }
 
-.phantom-dropdown__trigger:hover {
-  border-color: #666;
-}
-
-.phantom-dropdown__placeholder {
-  color: #555;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.phantom-dropdown__label {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 17px;
-}
-
-.phantom-dropdown__arrow {
-  color: #666;
-  margin-left: auto;
-}
-
-.phantom-dropdown__icon {
+.phantom-dropdown .select-dropdown__icon,
+.phantom-dropdown__list .select-dropdown__icon {
   width: 26px;
   height: 26px;
-  object-fit: contain;
-  flex-shrink: 0;
 }
 
-.phantom-dropdown__list {
-  max-height: 300px;
-  overflow-y: auto;
-  background: #1e1e2a;
-  border: 1px solid #4a4a5a;
-  border-radius: 3px;
-  z-index: 200;
-  margin-top: 2px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
-
-.phantom-dropdown__item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 12px;
-  background: transparent;
-  border: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  font-size: 17px;
-  color: #9090a8;
-  white-space: nowrap;
-}
-
-.phantom-dropdown__item:hover {
-  background: #2a2a38;
-  color: #ccc;
-}
-
-.phantom-dropdown__item--active {
-  background: #2e2315;
-  color: #f4a13a;
-}
-
-.phantom-dropdown__item-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* 未開放テンプレートの「（Lv.Nで開放）」等、ラベル末尾の補足テキスト */
-.phantom-dropdown__sublabel {
-  font-size: 13px;
-  font-weight: 400;
-  color: #8a8a9a;
-  margin-left: 2px;
-}
-
-.phantom-dropdown__tooltip {
-  z-index: 500;
-  background: #1a1a2a;
-  border: 1px solid #4a4a6a;
-  border-radius: 4px;
-  padding: 8px 12px;
-  max-width: 280px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  pointer-events: none;
-}
-
-.phantom-dropdown__tooltip-name {
-  font-size: 16px;
-  color: #e8e6e1;
-  font-weight: 600;
-  margin-bottom: 5px;
-}
-
-.phantom-dropdown__tooltip-desc {
+/* 因子選択ドロップダウン(因子設定ダイアログ内)。長い因子名でも文字欠けしにくいよう、
+   文字サイズをテンプレート選択より少し小さくする。 */
+.phantom-factor-dropdown .select-dropdown,
+.select-dropdown__list.phantom-factor-dropdown {
   font-size: 15px;
-  color: #8888aa;
-  line-height: 1.5;
 }
 
-/* ---- Grade Stepper ---- */
-.phantom-grade-stepper {
+/* ---- Level Stepper ---- */
+.phantom-level-stepper {
   display: flex;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
 }
 
-.phantom-grade-stepper__value {
+.phantom-level-stepper__value {
   font-size: 17px;
   color: #4a9af4;
   min-width: 38px;
@@ -1037,13 +958,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-.phantom-grade-stepper__btns {
+.phantom-level-stepper__btns {
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
 
-.phantom-grade-stepper__btn {
+.phantom-level-stepper__btn {
   background: #252530;
   border: 1px solid #38384a;
   border-radius: 2px;
@@ -1060,12 +981,119 @@
   transition: background 0.1s;
 }
 
-.phantom-grade-stepper__btn:hover:not(:disabled) {
+.phantom-level-stepper__btn:hover:not(:disabled) {
   background: #383848;
   color: #e8e6e1;
 }
 
-.phantom-grade-stepper__btn:disabled {
+.phantom-level-stepper__btn:disabled {
   color: #383848;
   cursor: default;
+}
+
+/* 映痕プリセット(因子設定ダイアログの映痕列の上端・右寄せ。共通部分は components/preset/preset.css) */
+.phantom-affix-preset-bar .preset-bar__trigger {
+  min-width: 220px;
+  max-width: 320px;
+}
+
+.phantom-affix-preset-bar__level {
+  display: inline-block;
+  min-width: 2em;
+  margin-right: 8px;
+  color: #4a9af4;
+  font-weight: 600;
+}
+
+/* 因子設定ダイアログのヘッダーの因子スロット切り替え(装備選択ダイアログの部位切り替えと同じ見た目)。
+   アイコンはツリーのノードと同じく、スロットの背景(品質)に装着中の因子のアイコンを重ねる。 */
+.phantom-factor-dialog__slot-switch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.phantom-factor-dialog__slot-switch-btn {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: #2a2a34;
+  border: 1px solid #3a3a45;
+  border-radius: 5px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.phantom-factor-dialog__slot-switch-btn img {
+  position: absolute;
+  object-fit: contain;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.phantom-factor-dialog__slot-switch-bg {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ツリーのノードと同じ比率(背景120に対して因子アイコン78) */
+.phantom-factor-dialog__slot-switch-factor {
+  inset: 17.5%;
+  width: 65%;
+  height: 65%;
+}
+
+.phantom-factor-dialog__slot-switch-btn:hover {
+  background: #3a3a48;
+  border-color: #55555f;
+}
+
+.phantom-factor-dialog__slot-switch-btn--active {
+  background: #454558;
+  border-color: #8a8aa0;
+}
+
+.phantom-factor-dialog__slot-switch-btn--active img {
+  opacity: 1;
+}
+
+/* 映痕列の上端の行(右寄せ。映痕プリセット) */
+.phantom-factor-dialog__toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 映痕列の見出し行の右端のレアリティ一括変更(見出し行は equip-details-section__heading-row) */
+.phantom-factor-dialog__bulk-quality {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #8a8a96;
+}
+
+/* 因子設定ダイアログ左上の枠: 因子名の下の因子タイプ・型の所属 */
+.phantom-factor-dialog__factor-meta {
+  font-size: 12px;
+  color: #9a9aae;
+}
+
+/* 「因子」ラベル行(右端に特異点因子の型不一致の警告) */
+.phantom-factor-dialog__factor-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.phantom-factor-dialog__school-warning {
+  font-size: 11px;
+  color: #e0a040;
+  cursor: help;
 }

@@ -1,11 +1,11 @@
 import type { TFunction } from 'i18next';
 import phantomAffixesRaw from '../../data/phantom-affixes.json';
-import { renderEffectDesc } from '../components/gameText';
+import { stripMarkup, substituteEffectDescParams } from '../components/gameText';
 import { SEA_BREEZE_NAME_COLOR } from '../equipment/equipmentSlotPickerData';
 import { PHANTOM_EFFECT_TYPE_BUFF } from '../stats/attrMaps';
 import type { PhantomAffixValue, PhantomFactorSlotValue } from './phantomData';
 import { pfData } from './phantomData';
-import { PHANTOM_FACTOR_PCT_ATTR_IDS, type GameDataT } from './phantomView';
+import { highlightValueMarkup, PHANTOM_FACTOR_PCT_ATTR_IDS, type GameDataT } from './phantomView';
 
 // 祈願因子のスロットに埋め込む「映痕」(シーズン4新規、phantom-affixes.json)の表示/編集用ヘルパー。
 // 映痕は group(同一効果のまとまり)ごとに、品質(quality)別の離散段階(上級4/卓越3/エピック3/不朽1、
@@ -131,19 +131,33 @@ export function getAffixGroup(group: number): AffixGroup | undefined {
   return AFFIX_GROUPS.get(group);
 }
 
-// スロットに埋め込める映痕の一覧(系統の表示順 → group順)。クラス映痕は現在のクラスのもののみ。
+// スロットに埋め込める映痕の一覧(系統の表示順 → クラス映痕はクラス順 → group順)。
+// ゲーム内では因子と異なるクラスの映痕も埋め込めるため、クラス映痕は全クラス分を返す。
+// preferredProfessionId(因子のクラス)のクラス映痕を先頭に、残りはクラスID順に並べる。
 export function getAffixGroupsForSlot(
   affixTypes: readonly number[],
-  professionId: number,
+  preferredProfessionId: number,
 ): AffixGroup[] {
-  const order = (lib: number) => {
+  const libOrder = (lib: number) => {
     const i = (AFFIX_LIB_ORDER as readonly number[]).indexOf(lib);
     return i < 0 ? AFFIX_LIB_ORDER.length : i;
   };
+  // クラス共通(0)と優先クラスは同順位(先頭)、他クラスはクラスID順。
+  const professionOrder = (profession: number) =>
+    profession === 0 || profession === preferredProfessionId ? -1 : profession;
   return [...AFFIX_GROUPS.values()]
     .filter((g) => affixTypes.includes(g.affixType))
-    .filter((g) => g.profession === 0 || g.profession === professionId)
-    .sort((a, b) => order(a.libId) - order(b.libId) || a.group - b.group);
+    .sort(
+      (a, b) =>
+        libOrder(a.libId) - libOrder(b.libId) ||
+        professionOrder(a.profession) - professionOrder(b.profession) ||
+        a.group - b.group,
+    );
+}
+
+// 因子のクラス(クラス専用因子ならそのクラス、共通因子なら null)。
+export function getFactorProfessionId(classKey: string): number | null {
+  return pfData.byClass[classKey]?.professionIds[0] ?? null;
 }
 
 export function getAffixQualityRange(
@@ -188,22 +202,58 @@ export function affixLabel(tg: GameDataT, group: number): string {
 
 // 映痕の効果説明(値込み)。例: 「会心 +267」「「刃影」の祈りダメージ+2.67%。」
 export function affixEffectText(tg: GameDataT, affix: PhantomAffixValue): string {
+  return stripMarkup(affixEffectMarkup(tg, affix));
+}
+
+// affixEffectText の装飾タグ付き版(効果値が <style="accent-gn"> で囲まれている)。
+// renderMarkup で描画する。
+export function affixEffectMarkup(tg: GameDataT, affix: PhantomAffixValue): string {
   const g = getAffixGroup(affix.group);
   if (!g) return '';
   if (g.effectType === 1) {
     const label = tg(`attributes.${g.effectId}`, { defaultValue: String(g.effectId) });
-    return `${label} +${formatAffixValue(g.unit, affix.value)}`;
+    return highlightValueMarkup(label, `+${formatAffixValue(g.unit, affix.value)}`);
   }
   const desc = tg(`attrDescs.${g.effectId}`, { defaultValue: '' });
-  return renderEffectDesc(desc, [affix.value], g.unit === 'percent', 2);
+  return substituteEffectDescParams(desc, [affix.value], g.unit === 'percent', 2);
 }
 
-// 映痕を新たに選んだときの初期値(最低品質・その品質の最大値)。
-export function defaultAffixValue(group: number): PhantomAffixValue | null {
+// 映痕の品質(レアリティ)の一覧(低い順)。全映痕で共通(上級/卓越/エピック/不朽)。
+export const AFFIX_QUALITIES: number[] = [
+  ...new Set([...AFFIX_GROUPS.values()].flatMap((g) => g.qualities.map((q) => q.quality))),
+].sort((x, y) => x - y);
+
+// 映痕を新たに選んだときの初期値(既定の品質・その品質の最大値)。preferredQuality はユーザーが
+// 選んだ既定の品質(因子設定ダイアログのレアリティ一括変更)。映痕がその品質を持たなければ最低品質。
+export function defaultAffixValue(
+  group: number,
+  preferredQuality?: number,
+): PhantomAffixValue | null {
   const g = getAffixGroup(group);
-  const q = g?.qualities[0];
+  const q = g?.qualities.find((r) => r.quality === preferredQuality) ?? g?.qualities[0];
   if (!q) return null;
   return { group, quality: q.quality, value: q.max };
+}
+
+// 因子に埋め込んだ映痕(現在のレベルで開放されているスロットの分)の品質をまとめて変更する。
+// 品質が変わる映痕の効果値は新しい品質の最大値にリセットする(affixWithQuality)。
+// 戻り値の changed は品質が変わる映痕の数(確認ダイアログ用。その品質を持たない映痕は変えない)。
+export function withAffixQualities(
+  factor: PhantomFactorSlotValue,
+  quality: number,
+): { factor: PhantomFactorSlotValue; changed: number } {
+  const slotCount = getEmbedSlots(factor.classKey, factor.grade).length;
+  let changed = 0;
+  const affixes = (factor.affixes ?? []).map((affix, i) => {
+    if (!affix || i >= slotCount || affix.quality === quality) return affix;
+    if (!getAffixQualityRange(affix.group, quality)) return affix;
+    changed++;
+    return affixWithQuality(affix, quality);
+  });
+  return {
+    factor: changed > 0 ? factorWithAffixes(factor.classKey, factor.grade, affixes) : factor,
+    changed,
+  };
 }
 
 // 品質を変更したときの値(新しい品質の最大値)。
@@ -219,25 +269,25 @@ export function clampAffixValue(affix: PhantomAffixValue, value: number): Phanto
   return { ...affix, value: Math.min(range.max, Math.max(range.min, value)) };
 }
 
-// 因子のグレード別スロット構成(1要素=1スロット、値=埋め込める AffixType)。
+// 因子のレベル別スロット構成(1要素=1スロット、値=埋め込める AffixType)。
 export function getEmbedSlots(classKey: string, grade: number): number[][] {
   return pfData.byClass[classKey]?.grades[grade - 1]?.embedSlots ?? [];
 }
 
-// 因子クラスの最大スロット数(全グレード中の最大)。
+// 因子クラスの最大スロット数(全レベル中の最大)。
 export function getMaxEmbedSlotCount(classKey: string): number {
   const fc = pfData.byClass[classKey];
   return Math.max(0, ...(fc?.grades.map((g) => g.embedSlots?.length ?? 0) ?? []));
 }
 
-// スロット index が開放される最小グレード(どのグレードでも開放されないなら null)。
-export function getSlotUnlockGrade(classKey: string, index: number): number | null {
+// スロット index が開放される最小レベル(どのレベルでも開放されないなら null)。
+export function getSlotUnlockLevel(classKey: string, index: number): number | null {
   const fc = pfData.byClass[classKey];
   const g = fc?.grades.find((gr) => (gr.embedSlots?.length ?? 0) > index);
   return g ? g.level : null;
 }
 
-// 映痕をスロット構成に合わせて並べ直す。グレード変更でスロットの種類・数が変わる
+// 映痕をスロット構成に合わせて並べ直す。レベル変更でスロットの種類・数が変わる
 // (例: G2の2番目はクラス用、G3の2番目はステータス用)ため、既存の映痕を先頭から順に
 // 「空いている、種類の合うスロット」へ詰め直す。収まらない映痕は外れる。
 export function fitAffixesToSlots(
@@ -295,7 +345,7 @@ export function aggregateAffixEffects(
   return [...byGroup.values()];
 }
 
-// 因子の映痕のうち、現在のグレードで開放されているスロットに埋め込まれているもの(空きは除く)。
+// 因子の映痕のうち、現在のレベルで開放されているスロットに埋め込まれているもの(空きは除く)。
 export function getActiveAffixes(
   factor: PhantomFactorSlotValue | null | undefined,
 ): PhantomAffixValue[] {
@@ -326,7 +376,7 @@ export function affixFightValue(affix: PhantomAffixValue): number {
   return steps[steps.length - 1][1];
 }
 
-// 因子の映痕のうち、現在のグレードで開放されているスロットの分の効果(同種は合計、重複不可は最大値)。
+// 因子の映痕のうち、現在のレベルで開放されているスロットの分の効果(同種は合計、重複不可は最大値)。
 export function getActiveAffixEffects(
   factor: PhantomFactorSlotValue | null | undefined,
 ): PhantomAffixValue[] {
@@ -335,7 +385,7 @@ export function getActiveAffixEffects(
 
 // 重複不可の映痕の効果は、全因子を通じて1つ(値が最大のもの)しか反映されない(2026-11-23 ユーザー確認)。
 // 複数の因子・スロットにまたがって2つ以上選ばれている重複不可の映痕の group を返す(警告表示用。
-// 重なっているスロットすべてに警告を出す)。各因子は現在のグレードで開放されているスロットのみ数える。
+// 重なっているスロットすべてに警告を出す)。各因子は現在のレベルで開放されているスロットのみ数える。
 export function getDuplicatedNonStackingGroups(
   factors: Iterable<PhantomFactorSlotValue | null | undefined>,
 ): Set<number> {
@@ -369,12 +419,48 @@ export function factorWithAffixes(
   return trimmed ? { classKey, grade, affixes: trimmed } : { classKey, grade };
 }
 
-// 因子のグレードを変更する(映痕をスロット構成に合わせて詰め直す)。
-export function withFactorGrade(
+// 映痕をスロット番号の若い順に、移行先で「空いている、種類の合う」最も若いスロットへ順番に入れる。
+// 収まらない映痕は外れる。レベルを下げる際に使う(fitAffixesToSlots は元の位置に合うものを
+// 優先して残すため、G3→G2 で若いスロットの映痕が後ろの映痕に押し出されることがある)。
+export function packAffixesInOrder(
+  affixes: readonly (PhantomAffixValue | null)[] | undefined,
+  slots: number[][],
+): (PhantomAffixValue | null)[] {
+  const result: (PhantomAffixValue | null)[] = slots.map(() => null);
+  for (const affix of affixes ?? []) {
+    if (!affix) continue;
+    const type = getAffixGroup(affix.group)?.affixType;
+    if (type == null) continue;
+    const i = result.findIndex((v, idx) => v == null && slots[idx].includes(type));
+    if (i >= 0) result[i] = affix;
+  }
+  return result;
+}
+
+// 因子のレベルを変更する(映痕をスロット構成に合わせて詰め直す)。レベルを下げる場合は
+// スロット番号の若い映痕から順に、移行先の若いスロットへ詰める(packAffixesInOrder)。
+export function withFactorLevel(
   factor: PhantomFactorSlotValue,
   grade: number,
 ): PhantomFactorSlotValue {
+  if (grade < factor.grade) {
+    const active = getActiveAffixes(factor);
+    return factorWithAffixes(
+      factor.classKey,
+      grade,
+      packAffixesInOrder(active, getEmbedSlots(factor.classKey, grade)),
+    );
+  }
   return withFactorClass(factor, factor.classKey, grade);
+}
+
+// 因子のレベルを変更したときに外れる映痕の数(確認ダイアログ用)。
+export function countAffixesLostByLevelChange(
+  factor: PhantomFactorSlotValue | null | undefined,
+  grade: number,
+): number {
+  if (!factor) return 0;
+  return getActiveAffixes(factor).length - getActiveAffixes(withFactorLevel(factor, grade)).length;
 }
 
 // 因子の種類を変更する(映痕はできるだけ引き継ぐ)。

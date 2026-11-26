@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   buildTreeSteps,
   getActivePhantomNodeIds,
-  getDefaultFactorGrade,
+  getDefaultFactorLevel,
   getUnlockLevel,
   hasLegacyPhantomData,
   isTemplateLegacy,
+  pfData,
+  sortTreeStepsByUnlockLevel,
   stData,
 } from './phantomData';
 
@@ -94,8 +96,43 @@ describe('hasLegacyPhantomData / isTemplateLegacy', () => {
   });
 });
 
-describe('getDefaultFactorGrade', () => {
+describe('getDefaultFactorLevel', () => {
   it('is fixed at G2 (not linked to the season schedule)', () => {
-    expect(getDefaultFactorGrade()).toBe(2);
+    expect(getDefaultFactorLevel()).toBe(2);
+  });
+});
+
+describe('sortTreeStepsByUnlockLevel', () => {
+  const stepLevel = (nodeIds: number[]) =>
+    Math.min(...nodeIds.map((id) => getUnlockLevel(stData.treeNodes[String(id)].unlockCondition)));
+
+  it('orders every template by unlock level while keeping all steps', () => {
+    for (const [tid, tmpl] of Object.entries(stData.templates)) {
+      const steps = buildTreeSteps(tmpl.rootNodeId, Number(tid));
+      const sorted = sortTreeStepsByUnlockLevel(steps);
+      expect(sorted).toHaveLength(steps.length);
+      expect(new Set(sorted)).toEqual(new Set(steps));
+      const levels = sorted.map((s) => stepLevel(s.nodeIds));
+      expect(levels).toEqual([...levels].sort((a, b) => a - b));
+      expect(sorted[0]).toBe(steps[0]); // ルートは先頭のまま
+    }
+  });
+
+  it('puts the Lv35 choice factor before the Lv40 solo factor (template 9)', () => {
+    const tmpl = stData.templates['9'];
+    const sorted = sortTreeStepsByUnlockLevel(buildTreeSteps(tmpl.rootNodeId, 9));
+    const idx = (id: number) => sorted.findIndex((s) => s.nodeIds.includes(id));
+    expect(idx(253)).toBeLessThan(idx(252));
+  });
+});
+
+describe('特異点因子の型の所属', () => {
+  it('links each singularity factor to one of its class types (X1/X2: type1, X3/X4: type2)', () => {
+    // ビートパフォーマー(ShowTalentStage [119, 120])の特異因子X1〜X4
+    expect(['4121', '4122', '4123', '4124'].map((k) => pfData.byClass[k].talentSchoolId)).toEqual([
+      119, 119, 120, 120,
+    ]);
+    // 第六感等の他タイプの因子は型を問わない
+    expect(pfData.byClass['4001'].talentSchoolId).toBeUndefined();
   });
 });

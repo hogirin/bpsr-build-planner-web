@@ -18,7 +18,7 @@ import {
   getModById,
   modulesData,
 } from '../module/moduleData';
-import { factorBaseName, getFactorEffectDesc } from '../phantom/phantomView';
+import { factorShortName, getFactorEffectDesc } from '../phantom/phantomView';
 import { affixEffectText } from '../phantom/phantomAffixData';
 import {
   getActivePhantomNodeIds,
@@ -363,7 +363,7 @@ function buildAiExportSnapshot(
           {
             groupId: Number(groupId),
             classKey: factor.classKey,
-            name: factorBaseName(tGame, factor.classKey),
+            name: factorShortName(tGame, factor.classKey),
             grade: factor.grade,
             itemId: pfData.byClass[factor.classKey]?.grades[factor.grade - 1]?.id ?? null,
             effect: getFactorEffectDesc(tGame, factor.classKey, factor.grade),

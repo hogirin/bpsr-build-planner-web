@@ -4,15 +4,19 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import Stepper from '../components/Stepper';
 import FactorSlot from './FactorSlot';
 import PhantomFactorDialog from './PhantomFactorDialog';
-import { getDuplicatedNonStackingGroups, withFactorGrade } from './phantomAffixData';
+import {
+  countAffixesLostByLevelChange,
+  getDuplicatedNonStackingGroups,
+  withFactorLevel,
+} from './phantomAffixData';
 import type { PhantomFactorSlotValue, TreeStep } from './phantomData';
 import {
   getActivePhantomNodeIds,
-  getDefaultFactorGrade,
-  MAX_FACTOR_GRADE,
+  getDefaultFactorLevel,
+  MAX_FACTOR_LEVEL,
   stData,
 } from './phantomData';
-import { factorBaseName, getNodeIcon } from './phantomView';
+import { factorShortName, getNodeIcon } from './phantomView';
 
 // ノード設定リスト(ツリーの各ステップに対応する行)。PhantomPanel から分離。
 // 行の種類: 固定ノード / 効果選択 / 因子スロット(単独・タイプ選択・経路依存)。
@@ -114,15 +118,15 @@ export default function PhantomNodeConfig({
     onPhantomFactorSlot(groupId, value);
   };
 
-  // 未装着スロットの表示グレード(groupId単位)。FactorSlot自身はcontrolledにし、
-  // 因子ランク一括変更から未装着スロットの表示も上書きできるようにする。
+  // 未装着スロットの表示レベル(groupId単位)。FactorSlot自身はcontrolledにし、
+  // 因子レベル一括変更から未装着スロットの表示も上書きできるようにする。
   // 保存対象(store)ではないため、リロードごとにリセットされる。
-  const [pendingGrades, setPendingGrades] = useState<Record<number, number>>({});
+  const [pendingLevels, setPendingLevels] = useState<Record<number, number>>({});
 
-  // 因子ランク一括変更(ルートノード行の右端)の表示値。各ノードの現在のグレードとは
+  // 因子レベル一括変更(ルートノード行の右端)の表示値。各ノードの現在のレベルとは
   // 独立したこのコントロール自身のローカル状態で、store に保存されないためリロード
-  // 毎にデフォルト値へ戻る。個別ノードのグレードStepper操作ではこの値を変更しない。
-  const [bulkGrade, setBulkGrade] = useState(getDefaultFactorGrade);
+  // 毎にデフォルト値へ戻る。個別ノードのレベルStepper操作ではこの値を変更しない。
+  const [bulkLevel, setBulkLevel] = useState(getDefaultFactorLevel);
 
   // renderRow の各factor系kindが「現在表示中のスロット」として選ぶgroupIdと同じロジック。
   // 一括変更の対象を、画面に見えているスロットだけに絞るために使う。
@@ -142,30 +146,45 @@ export default function PhantomNodeConfig({
   });
 
   // 一括変更時は、画面に見えている因子スロットすべてを個々の現在値を無視してこの値に
-  // 統一する(装着済みは store 経由、未装着は pendingGrades 経由)。相対的な差分ではなく
+  // 統一する(装着済みは store 経由、未装着は pendingLevels 経由)。相対的な差分ではなく
   // 絶対値での統一である点に注意。
-  const handleBulkGradeChange = (newValue: number) => {
-    setBulkGrade(newValue);
+  // 一括でレベルを下げて映痕が外れる因子がある場合は確認ダイアログを挟む(確認待ちのレベルと外れる数の合計)。
+  const [pendingBulkLevelDown, setPendingBulkLevelDown] = useState<{
+    level: number;
+    lost: number;
+  } | null>(null);
+
+  const handleBulkLevelChange = (newValue: number) => {
+    const lost = visibleFactorGroupIds.reduce(
+      (sum, gid) => sum + countAffixesLostByLevelChange(phantomFactorSlots[gid], newValue),
+      0,
+    );
+    if (lost > 0) setPendingBulkLevelDown({ level: newValue, lost });
+    else applyBulkLevel(newValue);
+  };
+
+  const applyBulkLevel = (newValue: number) => {
+    setBulkLevel(newValue);
     for (const gid of visibleFactorGroupIds) {
       const current = phantomFactorSlots[gid] ?? null;
       if (current) {
         if (current.grade !== newValue)
-          onPhantomFactorSlot(gid, withFactorGrade(current, newValue));
+          onPhantomFactorSlot(gid, withFactorLevel(current, newValue));
       } else {
-        setPendingGrades((prev) => (prev[gid] === newValue ? prev : { ...prev, [gid]: newValue }));
+        setPendingLevels((prev) => (prev[gid] === newValue ? prev : { ...prev, [gid]: newValue }));
       }
     }
   };
-  const renderBulkGradeControl = () => (
-    <div className="phantom-bulk-grade">
-      <span className="phantom-bulk-grade__label">{t('buildPlanner.phantom.bulkGradeLabel')}</span>
+  const renderBulkLevelControl = () => (
+    <div className="phantom-bulk-level">
+      <span className="phantom-bulk-level__label">{t('buildPlanner.phantom.bulkLevelLabel')}</span>
       <Stepper
-        className="phantom-grade-stepper"
-        value={bulkGrade}
+        className="phantom-level-stepper"
+        value={bulkLevel}
         min={1}
-        max={MAX_FACTOR_GRADE}
+        max={MAX_FACTOR_LEVEL}
         formatValue={(v) => `G${v}`}
-        onChange={handleBulkGradeChange}
+        onChange={handleBulkLevelChange}
       />
     </div>
   );
@@ -178,7 +197,7 @@ export default function PhantomNodeConfig({
   const renderFactorSlot = (groupId: number) => (
     <FactorSlot
       current={phantomFactorSlots[groupId] ?? null}
-      pendingGrade={pendingGrades[groupId] ?? getDefaultFactorGrade()}
+      pendingLevel={pendingLevels[groupId] ?? getDefaultFactorLevel()}
       onOpen={() => setDialogGroupId(groupId)}
     />
   );
@@ -269,7 +288,7 @@ export default function PhantomNodeConfig({
               {tg(`seasonTalents.ordinaryEffects.${nodeId}`)}
             </span>
           </div>
-          {stepIdx === 0 && renderBulkGradeControl()}
+          {stepIdx === 0 && renderBulkLevelControl()}
         </>
       );
     } else if (step.kind === 'choice-ordinary') {
@@ -379,20 +398,26 @@ export default function PhantomNodeConfig({
         <PhantomFactorDialog
           groupId={dialogGroupId}
           current={phantomFactorSlots[dialogGroupId] ?? null}
-          pendingGrade={pendingGrades[dialogGroupId] ?? getDefaultFactorGrade()}
-          onPendingGradeChange={(grade) =>
-            setPendingGrades((prev) => ({ ...prev, [dialogGroupId]: grade }))
+          pendingLevel={pendingLevels[dialogGroupId] ?? getDefaultFactorLevel()}
+          onPendingLevelChange={(level) =>
+            setPendingLevels((prev) => ({ ...prev, [dialogGroupId]: level }))
           }
           professionId={professionId}
           duplicatedNonStackingGroups={duplicatedNonStackingGroups}
           onSet={handleSetFactor}
           onClose={() => setDialogGroupId(null)}
+          switchSlots={visibleFactorGroupIds.map((gid) => ({
+            groupId: gid,
+            title: numberedSlotName(gid),
+            factor: phantomFactorSlots[gid] ?? null,
+          }))}
+          onSwitch={setDialogGroupId}
         />
       )}
       {pendingFactorSwap && (
         <ConfirmDialog
           message={t('buildPlanner.phantom.factorDuplicateMsg', {
-            factor: factorBaseName(tg, pendingFactorSwap.value.classKey),
+            factor: factorShortName(tg, pendingFactorSwap.value.classKey),
             slot: numberedSlotName(pendingFactorSwap.conflictGroupId),
           })}
           confirmLabel={t('buildPlanner.phantom.factorDuplicateConfirm')}
@@ -400,17 +425,32 @@ export default function PhantomNodeConfig({
             const { groupId, value, conflictGroupId, previousValue } = pendingFactorSwap;
             // 真の入れ替え: 操作中スロットには選んだ因子を、重複先には操作中スロットの
             // 変更前の因子(未装着なら未装着)をそのまま移す。選んだ因子は重複先の因子を
-            // 移してくるものとして、重複先に埋め込まれていた映痕を引き継ぐ(グレードは選択時の値)。
+            // 移してくるものとして、重複先に埋め込まれていた映痕を引き継ぐ(レベルは選択時の値)。
             const conflictValue = phantomFactorSlots[conflictGroupId];
             onPhantomFactorSlot(
               groupId,
-              conflictValue ? withFactorGrade(conflictValue, value.grade) : value,
+              conflictValue ? withFactorLevel(conflictValue, value.grade) : value,
             );
             onPhantomFactorSlot(conflictGroupId, previousValue);
             setPendingFactorSwap(null);
           }}
           cancelLabel={t('buildPlanner.confirmCancel', { defaultValue: 'キャンセル' })}
           onCancel={() => setPendingFactorSwap(null)}
+        />
+      )}
+      {pendingBulkLevelDown && (
+        <ConfirmDialog
+          message={t('buildPlanner.phantom.affixLossOnLevelDownMsg', {
+            level: pendingBulkLevelDown.level,
+            count: pendingBulkLevelDown.lost,
+          })}
+          confirmLabel={t('buildPlanner.phantom.affixLossOnLevelDownConfirm')}
+          onConfirm={() => {
+            applyBulkLevel(pendingBulkLevelDown.level);
+            setPendingBulkLevelDown(null);
+          }}
+          cancelLabel={t('buildPlanner.confirmCancel')}
+          onCancel={() => setPendingBulkLevelDown(null)}
         />
       )}
     </div>

@@ -20,6 +20,20 @@
    grid-template-rows: 0fr→1frのトリックで、JSでの高さ計測なしに可変長コンテンツを
    アニメーションさせる。__body-inner はoverflow:hiddenでgridの自動最小サイズを0にし、
    閉時に完全につぶれるようにする。 */
+/* 絞り込み(装備選択/イマジン選択ダイアログのCollapsibleSection)を、枠+薄い影で少し浮いた
+   パネルとして表示し、候補一覧と見分けやすくする(心相晶のノード効果パネルと同じ方向性)。 */
+.filter-panel {
+  align-self: stretch;
+  box-sizing: border-box;
+  padding: 4px 6px 8px;
+  border: 1px solid #34344a;
+  border-radius: 6px;
+  background: rgba(28, 28, 38, 0.9);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.45),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
 .collapsible-section__body {
   display: grid;
   grid-template-rows: 0fr;
@@ -785,4 +799,284 @@
 
 .filter-toggle-btn:hover {
   color: #c8c6d1;
+}
+
+/* ---- SelectDropdown(ブラウザ標準<select>の置き換え) ----
+   トリガーの大きさ・余白は呼び出し側のクラス(className)で調整する。ここでは<select>相当の
+   基本の見た目と、全ドロップダウン共通の選択肢リストの見た目を定める。 */
+.select-dropdown {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  box-sizing: border-box;
+  min-width: 0;
+  background: #22222b;
+  border: 1px solid #3a3a45;
+  border-radius: 4px;
+  color: #e8e6e1;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.select-dropdown:hover:not(:disabled),
+.select-dropdown--open {
+  border-color: #55555f;
+}
+
+.select-dropdown:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.select-dropdown__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.select-dropdown__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-dropdown__label--muted {
+  color: #6a6a76;
+}
+
+.select-dropdown__sublabel {
+  color: #8a8a9a;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.select-dropdown__icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.select-dropdown__arrow {
+  color: #8a8a96;
+}
+
+.select-dropdown__list {
+  font-size: 12px;
+  background: #1e1e28;
+  border: 1px solid #3a3a50;
+  border-radius: 4px;
+  padding: 2px 0;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* 見出しはスクロールしても上端に残す(長い一覧でどのグループを見ているかわかるように) */
+.select-dropdown__group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 10px 3px;
+  font-size: 0.9em;
+  color: #7ab4f4;
+  background: #1e1e28;
+  border-top: 1px solid #2a2a33;
+}
+
+.select-dropdown__group:first-child {
+  border-top: none;
+}
+
+.select-dropdown__option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  background: none;
+  border: none;
+  color: #e8e6e1;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.select-dropdown__option:hover:not(:disabled),
+.select-dropdown__option:focus-visible {
+  background: rgba(255, 255, 255, 0.07);
+  outline: none;
+}
+
+.select-dropdown__option--selected {
+  background: #2a3040;
+}
+
+.select-dropdown__option:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 選択肢の説明ツールチップ(SelectOption.description) */
+.select-dropdown__tooltip {
+  background: #1a1a2a;
+  border: 1px solid #4a4a6a;
+  border-radius: 4px;
+  padding: 8px 12px;
+  max-width: 280px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.select-dropdown__tooltip-name {
+  font-size: 15px;
+  color: #e8e6e1;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.select-dropdown__tooltip-desc {
+  font-size: 14px;
+  color: #8888aa;
+  line-height: 1.5;
+}
+
+/* ---- ドロップダウンのボトムシート表示(スマホ相当の画面。Dropdown.tsx) ----
+   トリガー直下の小さなパネルの代わりに、画面下から出る大きめのシートで選択肢を表示する。 */
+@keyframes dropdown-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropdown-sheet-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes dropdown-sheet-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dropdown-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.dropdown-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  animation: dropdown-sheet-backdrop-in 0.15s ease-out;
+}
+
+.dropdown-sheet__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+  background: #1e1e28;
+  border-top: 1px solid #3a3a50;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.6);
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: dropdown-sheet-in 0.18s ease-out;
+}
+
+.dropdown-sheet--closing {
+  pointer-events: none;
+}
+
+.dropdown-sheet--closing .dropdown-sheet__panel {
+  animation: dropdown-sheet-out 0.14s ease-in forwards;
+}
+
+.dropdown-sheet--closing .dropdown-sheet__backdrop {
+  opacity: 0;
+  transition: opacity 0.14s;
+}
+
+.dropdown-sheet__title {
+  flex-shrink: 0;
+  padding: 12px 16px 8px;
+  font-size: 13px;
+  color: #9a9aae;
+  border-bottom: 1px solid #2a2a33;
+}
+
+/* シート内の選択肢リスト。パネル用の枠・影・最大高さはシート側が持つため打ち消す。 */
+.dropdown-sheet .dropdown-sheet__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* シート表示・タッチ操作では選択肢のタップ領域を広げる(指で押しやすい高さ)。 */
+.dropdown-sheet .dropdown-sheet__list .select-dropdown__option {
+  min-height: 44px;
+  padding: 8px 16px;
+}
+
+.dropdown-sheet .dropdown-sheet__list .select-dropdown__group {
+  padding: 8px 16px 4px;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .select-dropdown__option {
+    min-height: 44px;
+  }
+
+  .select-dropdown {
+    min-height: 36px;
+  }
+}
+
+/* タッチ操作で説明ツールチップの代わりに選択肢内へ表示する説明 */
+.select-dropdown__option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.select-dropdown__option-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.select-dropdown__option-desc {
+  font-size: 0.8em;
+  color: #8888aa;
+  line-height: 1.4;
+  white-space: normal;
 }

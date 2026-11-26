@@ -1,6 +1,6 @@
 # BPSR Build Planner Web
 
-`alalwww/bpsr-build-planner` を基に、ブラウザとGitHub Pagesだけで動く部分へ絞ったWeb専用版です。元プロジェクトのv0.13.0（シーズン4対応）までの変更を反映しています。
+`alalwww/bpsr-build-planner` を基に、ブラウザとGitHub Pagesだけで動く部分へ絞ったWeb専用版です。元プロジェクトのv0.14.1までのWeb向けの変更を反映しています。
 
 ## 含む機能
 
